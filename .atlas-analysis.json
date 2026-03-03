@@ -1,0 +1,81 @@
+{
+  "projectType": "sdk-library",
+  "projectName": "WebHaptics",
+  "projectDescription": "Haptic feedback library for the mobile web with React, Vue, and Svelte support",
+  "theme": "palm",
+  "primaryColor": "#6366f1",
+  "lightColor": null,
+  "darkColor": null,
+  "navigation": {
+    "groups": [
+      {
+        "group": "Get Started",
+        "pages": [
+          "introduction",
+          "installation",
+          "quickstart"
+        ]
+      },
+      {
+        "group": "Framework Guides",
+        "pages": [
+          "guides/react",
+          "guides/vue",
+          "guides/svelte",
+          "guides/vanilla"
+        ]
+      },
+      {
+        "group": "Core Concepts",
+        "pages": [
+          "concepts/patterns",
+          "concepts/intensity",
+          "concepts/custom-patterns",
+          "concepts/debug-mode"
+        ]
+      },
+      {
+        "group": "API Reference",
+        "pages": [
+          "api/web-haptics",
+          "api/use-web-haptics",
+          "api/create-web-haptics",
+          "api/types",
+          "api/presets"
+        ]
+      },
+      {
+        "group": "Advanced",
+        "pages": [
+          "advanced/pwm-modulation",
+          "advanced/browser-support",
+          "advanced/troubleshooting"
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Haptic feedback using the Vibration API",
+    "Framework support for React, Vue, Svelte, and Vanilla JS",
+    "11 built-in haptic presets",
+    "Custom pattern support with intensity control",
+    "PWM modulation for precise intensity simulation",
+    "Debug mode with audio feedback for desktop testing",
+    "TypeScript support with full type definitions",
+    "Zero dependencies"
+  ],
+  "publicApiSurface": [
+    "WebHaptics",
+    "useWebHaptics (React)",
+    "useWebHaptics (Vue)",
+    "createWebHaptics (Svelte)",
+    "defaultPatterns",
+    "Presets: success, warning, error, light, medium, heavy, soft, rigid, selection, nudge, buzz",
+    "trigger()",
+    "cancel()",
+    "destroy()",
+    "setDebug()",
+    "setShowSwitch()",
+    "isSupported"
+  ]
+}
