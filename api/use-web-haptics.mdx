@@ -1,0 +1,168 @@
+---
+title: useWebHaptics
+description: React hook for WebHaptics integration
+---
+
+React hook that manages a WebHaptics instance with automatic lifecycle handling.
+
+## Usage
+
+```typescript
+import { useWebHaptics } from '@builderbot/web-haptics/react'
+
+function MyComponent() {
+  const { trigger, cancel, isSupported } = useWebHaptics(options?)
+  
+  // Use trigger, cancel, and isSupported...
+}
+```
+
+## Parameters
+
+<ParamField path="options" type="WebHapticsOptions">
+  Optional configuration object
+
+  <ParamField path="debug" type="boolean" default="false">
+    Enable debug mode with audio feedback and visual indicators
+  </ParamField>
+
+  <ParamField path="showSwitch" type="boolean" default="false">
+    Show the haptic feedback toggle switch in the UI
+  </ParamField>
+</ParamField>
+
+## Return Value
+
+Returns an object with the following properties:
+
+<ResponseField name="trigger" type="(input?: HapticInput, options?: TriggerOptions) => Promise<void> | undefined">
+  Function to trigger a haptic vibration pattern
+
+  - `input` - The haptic pattern (number, string preset, array, or object)
+  - `options` - Optional trigger configuration with `intensity` property
+  - Returns a promise that resolves when the pattern completes
+</ResponseField>
+
+<ResponseField name="cancel" type="() => void">
+  Function to cancel any currently running haptic pattern
+</ResponseField>
+
+<ResponseField name="isSupported" type="boolean">
+  Whether haptic feedback is supported in the current browser
+</ResponseField>
+
+## Examples
+
+### Basic Usage
+
+```tsx
+import { useWebHaptics } from '@builderbot/web-haptics/react'
+
+function MyButton() {
+  const { trigger, isSupported } = useWebHaptics()
+  
+  const handleClick = async () => {
+    if (isSupported) {
+      await trigger('light')
+    }
+  }
+  
+  return <button onClick={handleClick}>Click me</button>
+}
+```
+
+### With Debug Mode
+
+```tsx
+function App() {
+  const { trigger } = useWebHaptics({ debug: true })
+  
+  return (
+    <button onClick={() => trigger('success')}>
+      Trigger Success
+    </button>
+  )
+}
+```
+
+### Custom Patterns
+
+```tsx
+function CustomHaptics() {
+  const { trigger, cancel } = useWebHaptics()
+  
+  const playCustomPattern = async () => {
+    await trigger([
+      { duration: 30, intensity: 0.5 },
+      { delay: 60, duration: 40, intensity: 1 }
+    ], { intensity: 0.7 })
+  }
+  
+  return (
+    <>
+      <button onClick={playCustomPattern}>Play Pattern</button>
+      <button onClick={cancel}>Stop</button>
+    </>
+  )
+}
+```
+
+### Dynamic Options
+
+```tsx
+function SettingsPanel() {
+  const [debugMode, setDebugMode] = useState(false)
+  const { trigger } = useWebHaptics({ debug: debugMode })
+  
+  // The hook automatically updates when options change
+  
+  return (
+    <div>
+      <label>
+        <input
+          type="checkbox"
+          checked={debugMode}
+          onChange={e => setDebugMode(e.target.checked)}
+        />
+        Debug Mode
+      </label>
+      <button onClick={() => trigger('medium')}>Test</button>
+    </div>
+  )
+}
+```
+
+## Lifecycle Management
+
+The hook automatically:
+- Creates a WebHaptics instance on mount
+- Destroys the instance on unmount
+- Updates `debug` and `showSwitch` settings when options change
+
+You don't need to manually call `destroy()` - the hook handles cleanup for you.
+
+## Vue Usage
+
+Vue also uses `useWebHaptics` with similar API:
+
+```vue
+<script setup>
+import { useWebHaptics } from '@builderbot/web-haptics/vue'
+
+const { trigger, isSupported } = useWebHaptics()
+
+const handleClick = async () => {
+  await trigger('success')
+}
+</script>
+
+<template>
+  <button @click="handleClick" :disabled="!isSupported">
+    Click me
+  </button>
+</template>
+```
+
+## Type Definitions
+
+See [Types](/api/types) for complete type definitions.

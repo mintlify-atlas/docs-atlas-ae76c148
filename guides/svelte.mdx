@@ -1,0 +1,477 @@
+---
+title: Svelte Integration
+description: Use WebHaptics in Svelte applications with the createWebHaptics function
+---
+
+# Svelte Integration
+
+The Svelte integration provides a `createWebHaptics` function that creates a haptics instance with manual lifecycle control, perfect for Svelte's reactive paradigm.
+
+## Installation
+
+<Steps>
+  <Step title="Install the package">
+    ```bash
+    npm install @accede-ai/webhaptics
+    ```
+  </Step>
+
+  <Step title="Import the function">
+    ```typescript
+    import { createWebHaptics } from '@accede-ai/webhaptics/svelte';
+    ```
+  </Step>
+</Steps>
+
+## Basic Usage
+
+Create a haptics instance and manage its lifecycle with Svelte's `onMount` and `onDestroy`:
+
+```svelte
+<script lang="ts">
+  import { onMount, onDestroy } from 'svelte';
+  import { createWebHaptics } from '@accede-ai/webhaptics/svelte';
+
+  const haptics = createWebHaptics();
+
+  function handleClick() {
+    haptics.trigger('medium');
+  }
+
+  onDestroy(() => {
+    haptics.destroy();
+  });
+</script>
+
+<button on:click={handleClick}>
+  Click me
+  {#if !haptics.isSupported}
+    (haptics not supported)
+  {/if}
+</button>
+```
+
+## API Reference
+
+### createWebHaptics(options?)
+
+Creates and returns a WebHaptics instance with control methods.
+
+#### Parameters
+
+<ParamField path="options" type="WebHapticsOptions" optional>
+  Configuration options for the WebHaptics instance
+  
+  <Expandable>
+    <ParamField path="debug" type="boolean" default="false">
+      Enable debug mode with audio feedback (useful for desktop development)
+    </ParamField>
+    
+    <ParamField path="showSwitch" type="boolean" default="false">
+      Show haptic feedback toggle switch in the UI
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+#### Return Value
+
+<ResponseField name="trigger" type="(input?: HapticInput, options?: TriggerOptions) => void">
+  Triggers a haptic feedback pattern. Accepts:
+  - A number (duration in ms)
+  - A preset name string (`'light'`, `'medium'`, `'heavy'`, `'success'`, etc.)
+  - An array of numbers (alternating on/off durations)
+  - An array of Vibration objects
+  - A HapticPreset object
+</ResponseField>
+
+<ResponseField name="cancel" type="() => void">
+  Cancels any currently playing haptic pattern
+</ResponseField>
+
+<ResponseField name="destroy" type="() => void">
+  Destroys the haptics instance and cleans up resources. Call this in `onDestroy`.
+</ResponseField>
+
+<ResponseField name="setDebug" type="(debug: boolean) => void">
+  Dynamically enable or disable debug mode
+</ResponseField>
+
+<ResponseField name="isSupported" type="boolean">
+  Indicates whether haptic feedback is supported in the current environment
+</ResponseField>
+
+## Type Definitions
+
+```typescript
+interface Vibration {
+  duration: number;    // Duration in milliseconds
+  intensity?: number;  // 0-1, controls vibration strength (default: 0.5)
+  delay?: number;      // Delay before this vibration in ms
+}
+
+type HapticInput = 
+  | number              // Simple duration
+  | string              // Preset name
+  | number[]            // Alternating on/off pattern
+  | Vibration[]         // Full control
+  | HapticPreset;
+
+interface TriggerOptions {
+  intensity?: number;   // Default intensity for vibrations without explicit intensity
+}
+
+interface WebHapticsOptions {
+  debug?: boolean;
+  showSwitch?: boolean;
+}
+```
+
+## Examples
+
+### Form Validation Feedback
+
+```svelte
+<script lang="ts">
+  import { onDestroy } from 'svelte';
+  import { createWebHaptics } from '@accede-ai/webhaptics/svelte';
+
+  const haptics = createWebHaptics();
+  let email = '';
+  let error = '';
+
+  function handleSubmit() {
+    if (!email.includes('@')) {
+      error = 'Invalid email';
+      haptics.trigger('error');
+      return;
+    }
+    
+    error = '';
+    haptics.trigger('success');
+    // Submit form...
+  }
+
+  onDestroy(() => {
+    haptics.destroy();
+  });
+</script>
+
+<form on:submit|preventDefault={handleSubmit}>
+  <input
+    type="email"
+    bind:value={email}
+    placeholder="Email"
+  />
+  {#if error}
+    <span class="error">{error}</span>
+  {/if}
+  <button type="submit">Login</button>
+</form>
+```
+
+### Interactive Toggle with Dynamic Debug Mode
+
+```svelte
+<script lang="ts">
+  import { onDestroy } from 'svelte';
+  import { createWebHaptics } from '@accede-ai/webhaptics/svelte';
+
+  const haptics = createWebHaptics({ debug: true });
+  let isActive = false;
+  let debugMode = true;
+
+  function handleToggle() {
+    isActive = !isActive;
+    haptics.trigger(isActive ? 'medium' : 'light');
+  }
+
+  function toggleDebug() {
+    debugMode = !debugMode;
+    haptics.setDebug(debugMode);
+  }
+
+  onDestroy(() => {
+    haptics.destroy();
+  });
+</script>
+
+<button on:click={handleToggle} class:active={isActive}>
+  {isActive ? 'ON' : 'OFF'}
+</button>
+
+<label>
+  <input type="checkbox" bind:checked={debugMode} on:change={toggleDebug} />
+  Debug Mode
+</label>
+
+<style>
+  .active {
+    background: green;
+    color: white;
+  }
+</style>
+```
+
+### Slider with Step Feedback
+
+```svelte
+<script lang="ts">
+  import { onDestroy } from 'svelte';
+  import { createWebHaptics } from '@accede-ai/webhaptics/svelte';
+
+  const haptics = createWebHaptics();
+  let value = 50;
+  let lastStep = 5;
+
+  function handleInput(event: Event) {
+    const target = event.target as HTMLInputElement;
+    value = parseInt(target.value);
+    
+    const currentStep = Math.floor(value / 10);
+    if (currentStep !== lastStep) {
+      haptics.trigger('selection');
+      lastStep = currentStep;
+    }
+  }
+
+  onDestroy(() => {
+    haptics.destroy();
+  });
+</script>
+
+<div>
+  <input
+    type="range"
+    min="0"
+    max="100"
+    bind:value
+    on:input={handleInput}
+  />
+  <span>{value}%</span>
+</div>
+```
+
+### List Selection
+
+```svelte
+<script lang="ts">
+  import { onDestroy } from 'svelte';
+  import { createWebHaptics } from '@accede-ai/webhaptics/svelte';
+
+  interface Item {
+    id: number;
+    name: string;
+  }
+
+  const haptics = createWebHaptics();
+  let items: Item[] = [
+    { id: 1, name: 'Item 1' },
+    { id: 2, name: 'Item 2' },
+    { id: 3, name: 'Item 3' },
+  ];
+  let selectedId: number | null = null;
+
+  function selectItem(id: number) {
+    selectedId = id;
+    haptics.trigger('selection');
+  }
+
+  onDestroy(() => {
+    haptics.destroy();
+  });
+</script>
+
+<ul>
+  {#each items as item (item.id)}
+    <li
+      on:click={() => selectItem(item.id)}
+      class:selected={selectedId === item.id}
+    >
+      {item.name}
+    </li>
+  {/each}
+</ul>
+
+<style>
+  .selected {
+    background: lightblue;
+  }
+</style>
+```
+
+### Custom Haptic Pattern
+
+```svelte
+<script lang="ts">
+  import { onDestroy } from 'svelte';
+  import { createWebHaptics } from '@accede-ai/webhaptics/svelte';
+  import type { Vibration } from '@accede-ai/webhaptics/svelte';
+
+  const haptics = createWebHaptics();
+
+  function playCustomPattern() {
+    const pattern: Vibration[] = [
+      { duration: 50, intensity: 0.3 },
+      { delay: 100, duration: 50, intensity: 0.6 },
+      { delay: 100, duration: 50, intensity: 0.9 },
+    ];
+    haptics.trigger(pattern);
+  }
+
+  onDestroy(() => {
+    haptics.destroy();
+  });
+</script>
+
+<button on:click={playCustomPattern}>
+  Play Custom Pattern
+</button>
+```
+
+## Common Patterns
+
+### Reusable Haptics Store
+
+```typescript
+// src/lib/stores/haptics.ts
+import { createWebHaptics } from '@accede-ai/webhaptics/svelte';
+import { onDestroy } from 'svelte';
+
+export function useHaptics(options?: WebHapticsOptions) {
+  const haptics = createWebHaptics(options);
+  
+  onDestroy(() => {
+    haptics.destroy();
+  });
+  
+  return haptics;
+}
+```
+
+```svelte
+<!-- Usage -->
+<script lang="ts">
+  import { useHaptics } from '$lib/stores/haptics';
+  
+  const haptics = useHaptics({ debug: true });
+</script>
+
+<button on:click={() => haptics.trigger('medium')}>
+  Click me
+</button>
+```
+
+### Notification System
+
+```svelte
+<script lang="ts">
+  import { onDestroy } from 'svelte';
+  import { createWebHaptics } from '@accede-ai/webhaptics/svelte';
+
+  const haptics = createWebHaptics();
+  let notifications: string[] = [];
+
+  function addNotification(message: string) {
+    notifications = [...notifications, message];
+    if (haptics.isSupported) {
+      haptics.trigger('nudge');
+    }
+  }
+
+  onDestroy(() => {
+    haptics.destroy();
+  });
+</script>
+
+<button on:click={() => addNotification('New message!')}>
+  Send Notification
+</button>
+
+<ul>
+  {#each notifications as notification, i (i)}
+    <li>{notification}</li>
+  {/each}
+</ul>
+```
+
+### Long Press Button
+
+```svelte
+<script lang="ts">
+  import { onDestroy } from 'svelte';
+  import { createWebHaptics } from '@accede-ai/webhaptics/svelte';
+
+  const haptics = createWebHaptics();
+  let isPressed = false;
+  let pressTimer: number;
+
+  function handleMouseDown() {
+    isPressed = true;
+    haptics.trigger('light');
+    
+    pressTimer = window.setTimeout(() => {
+      haptics.trigger('heavy');
+      handleLongPress();
+    }, 500);
+  }
+
+  function handleMouseUp() {
+    isPressed = false;
+    clearTimeout(pressTimer);
+  }
+
+  function handleLongPress() {
+    console.log('Long press detected!');
+  }
+
+  onDestroy(() => {
+    haptics.destroy();
+  });
+</script>
+
+<button
+  on:mousedown={handleMouseDown}
+  on:mouseup={handleMouseUp}
+  on:mouseleave={handleMouseUp}
+  class:pressed={isPressed}
+>
+  Hold me
+</button>
+
+<style>
+  .pressed {
+    transform: scale(0.95);
+  }
+</style>
+```
+
+## Available Presets
+
+<CodeGroup>
+```typescript Notification
+haptics.trigger('success')  // Ascending double-tap
+haptics.trigger('warning')  // Two taps with hesitation
+haptics.trigger('error')    // Three rapid harsh taps
+```
+
+```typescript Impact
+haptics.trigger('light')    // Single light tap (15ms, 0.4 intensity)
+haptics.trigger('medium')   // Moderate tap (25ms, 0.7 intensity)
+haptics.trigger('heavy')    // Strong tap (35ms, 1.0 intensity)
+haptics.trigger('soft')     // Soft cushioned tap (40ms, 0.5 intensity)
+haptics.trigger('rigid')    // Hard crisp tap (10ms, 1.0 intensity)
+```
+
+```typescript Selection
+haptics.trigger('selection') // Subtle tap (8ms, 0.3 intensity)
+```
+
+```typescript Custom
+haptics.trigger('nudge')     // Two quick taps with pause
+haptics.trigger('buzz')      // Continuous buzzing (1000ms)
+```
+</CodeGroup>
+
+<Tip>
+Unlike React and Vue integrations, the Svelte integration requires manual lifecycle management. Always call `destroy()` in `onDestroy` to prevent memory leaks. You can use `setDebug()` to dynamically toggle debug mode without recreating the instance.
+</Tip>

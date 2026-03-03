@@ -1,0 +1,168 @@
+---
+title: Installation
+description: Install WebHaptics in your project with npm, yarn, or pnpm
+---
+
+# Installation
+
+WebHaptics is available as an npm package with support for all major package managers.
+
+## Package Manager
+
+Install the library using your preferred package manager:
+
+<CodeGroup>
+```bash npm
+npm install web-haptics
+```
+
+```bash yarn
+yarn add web-haptics
+```
+
+```bash pnpm
+pnpm add web-haptics
+```
+</CodeGroup>
+
+## Framework Setup
+
+WebHaptics provides separate entry points for different frameworks. Import from the appropriate path:
+
+### React
+
+```tsx
+import { useWebHaptics } from 'web-haptics/react';
+```
+
+<Note>
+  Requires React 18 or higher
+</Note>
+
+### Vue
+
+```ts
+import { useWebHaptics } from 'web-haptics/vue';
+```
+
+<Note>
+  Requires Vue 3 or higher
+</Note>
+
+### Svelte
+
+```ts
+import { createWebHaptics } from 'web-haptics/svelte';
+```
+
+<Note>
+  Requires Svelte 4 or higher
+</Note>
+
+### Vanilla JavaScript
+
+```ts
+import { WebHaptics } from 'web-haptics';
+```
+
+## TypeScript Configuration
+
+WebHaptics includes built-in TypeScript definitions. No additional `@types` packages are needed.
+
+If you're using TypeScript, ensure your `tsconfig.json` includes:
+
+```json
+{
+  "compilerOptions": {
+    "moduleResolution": "bundler",
+    "module": "ESNext",
+    "target": "ES2020"
+  }
+}
+```
+
+## Verifying Installation
+
+Test your installation with a simple haptic trigger:
+
+<CodeGroup>
+```tsx React
+import { useWebHaptics } from 'web-haptics/react';
+
+function TestComponent() {
+  const { trigger, isSupported } = useWebHaptics();
+
+  if (!isSupported) {
+    return <div>Haptics not supported on this device</div>;
+  }
+
+  return (
+    <button onClick={() => trigger('medium')}>
+      Test Haptics
+    </button>
+  );
+}
+```
+
+```vue Vue
+<script setup>
+import { useWebHaptics } from 'web-haptics/vue';
+
+const { trigger, isSupported } = useWebHaptics();
+</script>
+
+<template>
+  <div v-if="!isSupported">
+    Haptics not supported on this device
+  </div>
+  <button v-else @click="trigger('medium')">
+    Test Haptics
+  </button>
+</template>
+```
+
+```svelte Svelte
+<script>
+  import { createWebHaptics } from 'web-haptics/svelte';
+  
+  const { trigger, isSupported } = createWebHaptics();
+</script>
+
+{#if !isSupported}
+  <div>Haptics not supported on this device</div>
+{:else}
+  <button on:click={() => trigger('medium')}>
+    Test Haptics
+  </button>
+{/if}
+```
+
+```ts Vanilla
+import { WebHaptics } from 'web-haptics';
+
+const haptics = new WebHaptics();
+
+if (WebHaptics.isSupported) {
+  document.querySelector('#test-button')?.addEventListener('click', () => {
+    haptics.trigger('medium');
+  });
+} else {
+  console.log('Haptics not supported on this device');
+}
+```
+</CodeGroup>
+
+<Tip>
+  Open your app on a mobile device or emulator to test haptic feedback. Most desktop browsers don't support the Vibration API.
+</Tip>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Quick Start" icon="rocket" href="/quickstart">
+    Create your first haptic interaction
+  </Card>
+  <Card title="API Reference" icon="book" href="/api/web-haptics">
+    Explore available methods and options
+  </Card>
+</CardGroup>

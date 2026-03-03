@@ -1,0 +1,382 @@
+---
+title: Troubleshooting
+description: Common issues and solutions for WebHaptics integration
+---
+
+## No Vibration Feedback
+
+### Issue: Device doesn't vibrate when calling `trigger()`
+
+<Accordion title="Check browser support">
+**Diagnosis**:
+```javascript
+import { WebHaptics } from '@taktil/web-haptics';
+
+console.log('Supported:', WebHaptics.isSupported);
+console.log('Navigator:', typeof navigator);
+console.log('Vibrate API:', typeof navigator?.vibrate);
+```
+
+**Solution**:
+- Verify `WebHaptics.isSupported` returns `true`
+- iOS browsers **never** support vibration (see [Browser Support](/advanced/browser-support))
+- Desktop browsers may support the API but lack hardware
+</Accordion>
+
+<Accordion title="Verify secure context">
+**Diagnosis**:
+```javascript
+console.log('Secure context:', window.isSecureContext);
+```
+
+**Solution**:
+- Use HTTPS in production
+- Localhost works without HTTPS in development
+- The Vibration API is blocked on `http://` pages (except localhost)
+</Accordion>
+
+<Accordion title="Ensure user interaction">
+**Problem**: Calling `trigger()` on page load or from async code without user gesture.
+
+**Solution**:
+```javascript
+// ✅ Good: In event handler
+button.addEventListener('click', () => {
+  haptics.trigger('click');
+});
+
+// ❌ Bad: On page load
+window.addEventListener('load', () => {
+  haptics.trigger('notification'); // May be blocked
+});
+
+// ⚠️ Caution: Async context
+button.addEventListener('click', async () => {
+  await fetch('/api/data');
+  haptics.trigger('success'); // Might work, depends on browser
+});
+```
+
+<Note>
+Some browsers require vibration to be triggered within a user gesture context. Always call `trigger()` synchronously in event handlers when possible.
+</Note>
+</Accordion>
+
+<Accordion title="Check device settings">
+**User-level issues**:
+- Device is in silent/vibrate-off mode
+- Battery saver mode may disable vibration
+- Accessibility settings might override haptics
+- Do Not Disturb mode can suppress vibration
+
+**Developer action**: Document that users should check device settings if haptics don't work.
+</Accordion>
+
+## Intensity Not Working
+
+### Issue: All vibrations feel the same strength
+
+<Warning>
+Intensity control is **emulated** via PWM modulation, not native API support. Some devices may not perceive the difference clearly.
+</Warning>
+
+<Accordion title="Understand PWM limitations">
+**How it works**:
+WebHaptics uses 20ms on/off cycles to simulate intensity:
+- **Intensity 1.0**: Continuous vibration
+- **Intensity 0.5**: 10ms on, 10ms off (50% duty cycle)
+- **Intensity 0.25**: 5ms on, 15ms off (25% duty cycle)
+
+**Why it might not feel different**:
+- **Hardware inertia**: Vibration motors take time to spin up/down
+- **Perception threshold**: Below ~30% intensity, pulses may feel identical
+- **Device quality**: Cheap motors lack responsiveness
+
+See [PWM Modulation](/advanced/pwm-modulation) for details.
+</Accordion>
+
+<Accordion title="Test with debug mode">
+**Diagnosis**:
+```javascript
+const haptics = new WebHaptics({ debug: true });
+
+haptics.trigger({ duration: 500, intensity: 0.3 });
+haptics.trigger({ duration: 500, intensity: 0.8 });
+```
+
+Debug mode produces **audio feedback** with pitch variations:
+- Higher intensity = higher pitch click sound
+- Listen for pitch changes to verify intensity is being processed
+
+**If audio pitch varies but haptics don't**: Hardware limitation, not a library issue.
+</Accordion>
+
+<Accordion title="Try longer durations">
+**Problem**: Short vibrations don't show intensity differences.
+
+**Solution**: Use 200ms+ durations to make PWM patterns perceptible:
+```javascript
+// Hard to distinguish
+haptics.trigger({ duration: 50, intensity: 0.3 });
+haptics.trigger({ duration: 50, intensity: 0.8 });
+
+// More noticeable
+haptics.trigger({ duration: 300, intensity: 0.3 });
+haptics.trigger({ duration: 300, intensity: 0.8 });
+```
+</Accordion>
+
+<Accordion title="Check intensity clamping">
+**Code reference**: index.ts:96-99
+
+Intensity is clamped to [0, 1]:
+```typescript
+const intensity = Math.max(0, Math.min(1, vib.intensity ?? defaultIntensity));
+```
+
+Values outside this range are silently corrected:
+- `intensity: 2.0` → `1.0`
+- `intensity: -0.5` → `0.0`
+
+**Debug**:
+```javascript
+haptics.trigger({ duration: 200, intensity: 0.5 }); // Correct
+haptics.trigger({ duration: 200, intensity: 50 });  // Clamped to 1.0!
+```
+
+<Note>
+Intensity is a decimal between 0.0 and 1.0, not a percentage (0-100).
+</Note>
+</Accordion>
+
+## Debug Mode Issues
+
+### Issue: Debug overlay not appearing
+
+<Accordion title="Enable showSwitch option">
+**Problem**: Label is hidden by default.
+
+**Solution**:
+```javascript
+const haptics = new WebHaptics({ 
+  debug: true, 
+  showSwitch: true  // Make overlay visible
+});
+```
+
+Without `showSwitch: true`, the debug label exists in the DOM but is hidden (`display: none`).
+</Accordion>
+
+<Accordion title="Check DOM availability">
+**Problem**: Creating instance in SSR/Node.js environment.
+
+**Solution**:
+```javascript
+if (typeof document !== 'undefined') {
+  const haptics = new WebHaptics({ debug: true });
+}
+```
+
+The library checks for `document` internally (index.ts:410), but won't crash. Debug features simply won't activate.
+</Accordion>
+
+<Accordion title="Verify trigger calls">
+**Problem**: Debug mode enabled but no feedback on trigger.
+
+**Diagnosis**:
+```javascript
+const haptics = new WebHaptics({ debug: true, showSwitch: true });
+
+haptics.trigger('click');
+// Should see label flash and hear click sound
+
+console.log('Triggered');
+```
+
+**If no output**: Check for JavaScript errors in console. The `trigger` method might be failing silently.
+</Accordion>
+
+### Issue: No audio in debug mode
+
+<Accordion title="Audio context suspended">
+**Problem**: Browsers suspend AudioContext until user interaction.
+
+**Solution**: First trigger must be in event handler:
+```javascript
+const haptics = new WebHaptics({ debug: true });
+
+button.addEventListener('click', () => {
+  haptics.trigger('click'); // ✅ Audio context resumes here
+});
+
+// Not this:
+setTimeout(() => {
+  haptics.trigger('notification'); // ⚠️ Audio might not play
+}, 1000);
+```
+
+See `ensureAudio()` method (index.ts:379-406) for audio initialization logic.
+</Accordion>
+
+<Accordion title="Browser compatibility">
+**Issue**: AudioContext not supported.
+
+**Check**:
+```javascript
+console.log('AudioContext:', typeof AudioContext);
+```
+
+**Support**: All modern browsers support AudioContext, but very old browsers (IE11) do not. Debug audio will be skipped silently.
+</Accordion>
+
+## Pattern Not Working
+
+### Issue: Custom patterns don't trigger
+
+<Accordion title="Validate pattern format">
+**Common mistakes**:
+```javascript
+// ❌ Wrong: Numbers not in array
+haptics.trigger(100, 50, 100);
+
+// ✅ Correct: Array of durations
+haptics.trigger([100, 50, 100]);
+
+// ❌ Wrong: Negative values
+haptics.trigger([100, -50, 100]);
+
+// ✅ Correct: Non-negative values
+haptics.trigger([100, 50, 100]);
+```
+
+**Validation code**: index.ts:174-187
+
+Invalid patterns log a warning and abort:
+```
+[web-haptics] Invalid vibration values. Durations and delays must be finite non-negative numbers.
+```
+</Accordion>
+
+<Accordion title="Check duration limits">
+**Max duration**: 1000ms per vibration phase (MAX_PHASE_MS constant, index.ts:11)
+
+```javascript
+// ⚠️ Clamped to 1000ms
+haptics.trigger({ duration: 5000, intensity: 1.0 });
+
+// ✅ Use multiple vibrations for longer patterns
+haptics.trigger([
+  { duration: 1000, intensity: 0.8 },
+  { duration: 1000, intensity: 0.8 },
+  { duration: 1000, intensity: 0.8 }
+]);
+```
+
+Vibrations exceeding 1000ms are silently clamped (index.ts:175).
+</Accordion>
+
+<Accordion title="Preset not found">
+**Issue**: Unknown preset name.
+
+```javascript
+haptics.trigger('buzz'); // ❌ Not a built-in preset
+```
+
+**Console warning**:
+```
+[web-haptics] Unknown preset: "buzz"
+```
+
+**Solution**: Use valid preset names (`click`, `success`, `error`, `warning`, `notification`) or define custom patterns. See available presets in the patterns file.
+</Accordion>
+
+## Instance Management
+
+### Issue: Multiple instances causing conflicts
+
+<Accordion title="Overlapping triggers">
+**Problem**: Creating multiple WebHaptics instances and triggering simultaneously.
+
+**Behavior**:
+- Each instance has its own debug overlay (incremental IDs)
+- `navigator.vibrate()` calls from different instances **overwrite** each other
+- Last call wins
+
+**Solution**: Use a single shared instance:
+```javascript
+// ✅ Singleton pattern
+const haptics = new WebHaptics();
+export default haptics;
+
+// Import and use everywhere
+import haptics from './haptics';
+```
+</Accordion>
+
+<Accordion title="Memory leaks">
+**Problem**: Creating instances without cleanup.
+
+**Solution**: Call `destroy()` when done:
+```javascript
+const haptics = new WebHaptics({ debug: true });
+
+// When component unmounts or page changes
+haptics.destroy(); // Removes DOM, closes AudioContext
+```
+
+The `destroy()` method (index.ts:230-244):
+- Cancels active patterns
+- Removes debug overlay
+- Closes AudioContext
+- Clears references
+</Accordion>
+
+## Performance Issues
+
+### Issue: Lag or dropped vibrations
+
+<Accordion title="Too many rapid triggers">
+**Problem**: Calling `trigger()` faster than patterns complete.
+
+**Solution**: Wait for completion:
+```javascript
+button.addEventListener('click', async () => {
+  await haptics.trigger('click'); // Wait for pattern to finish
+  // Now safe to trigger again
+});
+```
+
+The `trigger()` method returns a Promise that resolves when the pattern completes.
+</Accordion>
+
+<Accordion title="Complex patterns on slow devices">
+**Problem**: PWM modulation creates long arrays for low intensities.
+
+**Example**: 1000ms at 0.1 intensity generates 50 on/off segments:
+```
+[2, 18, 2, 18, 2, 18, ...] // 100 values total
+```
+
+**Solution**: 
+- Use shorter durations with delays for rhythm instead of one long vibration
+- Avoid very low intensities (&lt;0.2) on long durations
+- Consider intensity >= 0.5 for smoother performance
+</Accordion>
+
+## Getting Help
+
+If issues persist after troubleshooting:
+
+1. **Enable debug mode** and check console for warnings
+2. **Test on multiple devices** to isolate hardware vs. software issues
+3. **Check browser console** for errors or security warnings
+4. **Review source code** for implementation details (especially index.ts:60-82 for PWM, index.ts:155-156 for support detection)
+5. **Report bugs** with:
+   - Browser and version
+   - Device model
+   - Code snippet to reproduce
+   - Console output
+
+<Info>
+For browser-specific issues, test in debug mode first. The visual/audio feedback helps isolate whether the library is processing triggers correctly even if haptics don't work.
+</Info>

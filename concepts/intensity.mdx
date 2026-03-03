@@ -1,0 +1,251 @@
+---
+title: Intensity Control
+description: Understand how WebHaptics achieves precise intensity control using PWM modulation
+---
+
+WebHaptics implements intensity control through Pulse Width Modulation (PWM), a technique that simulates variable vibration strength by rapidly toggling the vibration motor on and off.
+
+## How PWM Works
+
+Since the Web Vibration API only supports on/off states, WebHaptics simulates intensity by:
+
+1. Dividing each vibration into small time cycles
+2. Varying the on/off ratio within each cycle
+3. Higher intensity = longer on-time per cycle
+
+<Accordion title="Visual PWM Explanation">
+  **100% Intensity (intensity = 1.0):**
+  ```
+  ████████████████████  (motor always on)
+  ```
+
+  **50% Intensity (intensity = 0.5):**
+  ```
+  ██████____██████____  (motor on 50% of each cycle)
+  ```
+
+  **25% Intensity (intensity = 0.25):**
+  ```
+  ███_______███_______  (motor on 25% of each cycle)
+  ```
+
+  The rapid switching creates the perception of reduced vibration strength.
+</Accordion>
+
+## PWM Configuration
+
+WebHaptics uses these constants for PWM modulation (from `index.ts:9-12`):
+
+```typescript
+const PWM_CYCLE = 20;  // ms per intensity modulation cycle
+```
+
+<Note>
+  A 20ms cycle (50 Hz) is fast enough to feel smooth but slow enough to work reliably across different devices.
+</Note>
+
+## The modulateVibration Function
+
+The core PWM implementation is in the `modulateVibration` function (`index.ts:60-82`):
+
+```typescript
+function modulateVibration(duration: number, intensity: number): number[] {
+  if (intensity >= 1) return [duration];
+  if (intensity <= 0) return [];
+
+  const onTime = Math.max(1, Math.round(PWM_CYCLE * intensity));
+  const offTime = PWM_CYCLE - onTime;
+  const result: number[] = [];
+
+  let remaining = duration;
+  while (remaining >= PWM_CYCLE) {
+    result.push(onTime);
+    result.push(offTime);
+    remaining -= PWM_CYCLE;
+  }
+  if (remaining > 0) {
+    const remOn = Math.max(1, Math.round(remaining * intensity));
+    result.push(remOn);
+    const remOff = remaining - remOn;
+    if (remOff > 0) result.push(remOff);
+  }
+
+  return result;
+}
+```
+
+<Accordion title="How modulateVibration Works">
+  1. **Edge cases:** Returns immediately for intensity 1 (full on) or 0 (off)
+  2. **Calculate timing:** Computes on-time and off-time for each 20ms cycle
+  3. **Full cycles:** Processes complete 20ms cycles with alternating on/off
+  4. **Remainder:** Handles any remaining duration less than 20ms
+  5. **Output:** Returns flat array like `[on, off, on, off, ...]` for `navigator.vibrate()`
+</Accordion>
+
+## Intensity Examples
+
+<Tabs>
+  <Tab title="Basic Intensity">
+    Control the global intensity of any pattern:
+
+    ```typescript
+    // Default intensity (0.5 if not specified)
+    haptics.trigger('medium');
+
+    // Full intensity
+    haptics.trigger('medium', { intensity: 1.0 });
+
+    // Half intensity
+    haptics.trigger('medium', { intensity: 0.5 });
+
+    // Very subtle
+    haptics.trigger('medium', { intensity: 0.2 });
+    ```
+  </Tab>
+
+  <Tab title="Per-Vibration Intensity">
+    Each vibration in a pattern can have its own intensity:
+
+    ```typescript
+    haptics.trigger([
+      { duration: 50, intensity: 1.0 },    // Strong
+      { duration: 50, intensity: 0.5 },    // Medium
+      { duration: 50, intensity: 0.2 }     // Weak
+    ]);
+    ```
+
+    <Note>
+      Per-vibration intensity values take precedence over the global `intensity` option.
+    </Note>
+  </Tab>
+
+  <Tab title="PWM Output">
+    See how different intensities are converted to PWM patterns:
+
+    ```typescript
+    // 100ms at 50% intensity
+    modulateVibration(100, 0.5)
+    // Output: [10, 10, 10, 10, 10, 10, 10, 10, 10, 10]
+    // Five complete 20ms cycles: 10ms on, 10ms off
+
+    // 100ms at 75% intensity
+    modulateVibration(100, 0.75)
+    // Output: [15, 5, 15, 5, 15, 5, 15, 5, 15, 5]
+    // Five complete 20ms cycles: 15ms on, 5ms off
+
+    // 100ms at 25% intensity
+    modulateVibration(100, 0.25)
+    // Output: [5, 15, 5, 15, 5, 15, 5, 15, 5, 15]
+    // Five complete 20ms cycles: 5ms on, 15ms off
+    ```
+  </Tab>
+</Tabs>
+
+## Intensity Resolution
+
+Intensity values are clamped between 0 and 1:
+
+```typescript
+const intensity = Math.max(0, Math.min(1, vib.intensity ?? defaultIntensity));
+```
+
+<Warning>
+  Values outside the 0-1 range are automatically clamped:
+  - `intensity: -0.5` becomes `0` (no vibration)
+  - `intensity: 1.5` becomes `1` (full intensity)
+</Warning>
+
+## Default Intensity Behavior
+
+From `index.ts:168-171`, the default intensity is 0.5:
+
+```typescript
+const defaultIntensity = Math.max(
+  0,
+  Math.min(1, options?.intensity ?? 0.5)
+);
+```
+
+**Priority order:**
+1. Individual vibration's `intensity` property (highest priority)
+2. Global `options.intensity` parameter
+3. Default value of `0.5` (lowest priority)
+
+<Accordion title="Intensity Priority Example">
+  ```typescript
+  haptics.trigger(
+    [
+      { duration: 50, intensity: 0.8 },  // Uses 0.8 (defined)
+      { duration: 50 }                    // Uses 0.3 (from options)
+    ],
+    { intensity: 0.3 }                    // Global intensity
+  );
+  ```
+</Accordion>
+
+## Desktop Testing with Intensity
+
+When using [debug mode](/concepts/debug-mode), intensity affects the audio feedback:
+
+```typescript
+const baseFreq = 2000 + intensity * 2000;
+this.audioFilter.frequency.value = baseFreq * jitter;
+this.audioGain.gain.value = 0.5 * intensity;
+```
+
+- **Higher intensity:** Higher pitch (up to 4000 Hz) and louder volume
+- **Lower intensity:** Lower pitch (down to 2000 Hz) and quieter volume
+
+<Note>
+  This audio feedback helps you fine-tune intensity values during development on desktop before testing on mobile devices.
+</Note>
+
+## Performance Considerations
+
+<Accordion title="PWM Overhead">
+  PWM modulation increases the size of the vibration array:
+
+  ```typescript
+  // Without PWM (intensity = 1)
+  [200]  // Single vibration
+
+  // With PWM (intensity = 0.5)
+  [10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10]
+  // 200ms / 20ms = 10 cycles × 2 values = 20 array elements
+  ```
+
+  This is handled efficiently by the browser's vibration API.
+</Accordion>
+
+## Validation
+
+Intensity values must be finite numbers (`index.ts:173-187`):
+
+```typescript
+if (
+  !Number.isFinite(vib.duration) ||
+  vib.duration < 0 ||
+  (vib.delay !== undefined &&
+    (!Number.isFinite(vib.delay) || vib.delay < 0))
+) {
+  console.warn(
+    `[web-haptics] Invalid vibration values. ` +
+    `Durations and delays must be finite non-negative numbers.`
+  );
+  return;
+}
+```
+
+<Warning>
+  Invalid intensity values (NaN, Infinity, etc.) will trigger a warning and the vibration will be skipped.
+</Warning>
+
+## Next Steps
+
+<Card title="Custom Patterns" icon="wand-magic-sparkles" href="/concepts/custom-patterns">
+  Use intensity control to create expressive custom patterns
+</Card>
+
+<Card title="Debug Mode" icon="bug" href="/concepts/debug-mode">
+  Test intensity on desktop with audio feedback
+</Card>

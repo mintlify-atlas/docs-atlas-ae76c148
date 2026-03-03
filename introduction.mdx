@@ -1,0 +1,134 @@
+---
+title: Introduction to WebHaptics
+description: Add haptic feedback to your mobile web applications with zero dependencies
+---
+
+# WebHaptics
+
+WebHaptics is a lightweight, zero-dependency library that brings native-feeling haptic feedback to mobile web applications. Built with modern web standards, it provides an intuitive API for React, Vue, Svelte, and vanilla JavaScript.
+
+## Why WebHaptics?
+
+<CardGroup cols={2}>
+  <Card title="Zero Dependencies" icon="feather">
+    Pure JavaScript implementation with no external dependencies
+  </Card>
+  <Card title="Framework Support" icon="code">
+    First-class support for React, Vue, and Svelte
+  </Card>
+  <Card title="11 Built-in Presets" icon="wand-magic-sparkles">
+    Pre-configured patterns for common interactions
+  </Card>
+  <Card title="PWM Intensity" icon="gauge">
+    Advanced intensity modulation for precise control
+  </Card>
+</CardGroup>
+
+## Key Features
+
+### Built-in Haptic Presets
+
+WebHaptics includes 11 carefully crafted presets inspired by iOS haptic feedback:
+
+- **Notification**: `success`, `warning`, `error`
+- **Impact**: `light`, `medium`, `heavy`, `soft`, `rigid`
+- **Selection**: `selection`
+- **Custom**: `nudge`, `buzz`
+
+### PWM Intensity Modulation
+
+Unlike basic vibration APIs, WebHaptics uses pulse-width modulation (PWM) to simulate variable intensity levels, creating more nuanced haptic experiences.
+
+### Framework-Agnostic Core
+
+Use the same haptic patterns across different frameworks:
+
+```tsx
+// React
+import { useWebHaptics } from 'web-haptics/react';
+
+// Vue
+import { useWebHaptics } from 'web-haptics/vue';
+
+// Svelte
+import { createWebHaptics } from 'web-haptics/svelte';
+
+// Vanilla
+import { WebHaptics } from 'web-haptics';
+```
+
+## Quick Example
+
+<CodeGroup>
+```tsx React
+import { useWebHaptics } from 'web-haptics/react';
+
+function App() {
+  const { trigger } = useWebHaptics();
+
+  return (
+    <button onClick={() => trigger('success')}>
+      Tap me
+    </button>
+  );
+}
+```
+
+```vue Vue
+<script setup>
+import { useWebHaptics } from 'web-haptics/vue';
+
+const { trigger } = useWebHaptics();
+</script>
+
+<template>
+  <button @click="trigger('success')">
+    Tap me
+  </button>
+</template>
+```
+
+```svelte Svelte
+<script>
+  import { createWebHaptics } from 'web-haptics/svelte';
+  
+  const { trigger } = createWebHaptics();
+</script>
+
+<button on:click={() => trigger('success')}>
+  Tap me
+</button>
+```
+</CodeGroup>
+
+## Get Started
+
+<CardGroup cols={2}>
+  <Card title="Installation" icon="download" href="/installation">
+    Install WebHaptics in your project
+  </Card>
+  <Card title="Quick Start" icon="rocket" href="/quickstart">
+    Build your first haptic interaction
+  </Card>
+  <Card title="API Reference" icon="book" href="/api/web-haptics">
+    Explore the complete API
+  </Card>
+  <Card title="Framework Guides" icon="code" href="/guides/react">
+    View framework-specific guides
+  </Card>
+</CardGroup>
+
+## Browser Support
+
+WebHaptics uses the [Vibration API](https://developer.mozilla.org/en-US/docs/Web/API/Vibration_API), which is supported on:
+
+- Android Chrome, Firefox, Edge
+- Mobile Safari (iOS 13+)
+
+<Note>
+  Desktop browsers generally don't support haptic feedback. Use `isSupported` to check availability.
+</Note>
+
+## TypeScript Support
+
+WebHaptics is written in TypeScript and includes comprehensive type definitions for all exports.

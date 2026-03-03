@@ -1,0 +1,336 @@
+---
+title: React Integration
+description: Use WebHaptics in React applications with the useWebHaptics hook
+---
+
+# React Integration
+
+The React integration provides a `useWebHaptics` hook that manages the haptics instance lifecycle and provides memoized trigger functions.
+
+## Installation
+
+<Steps>
+  <Step title="Install the package">
+    ```bash
+    npm install @accede-ai/webhaptics
+    ```
+  </Step>
+
+  <Step title="Import the hook">
+    ```tsx
+    import { useWebHaptics } from '@accede-ai/webhaptics/react';
+    ```
+  </Step>
+</Steps>
+
+## Basic Usage
+
+The hook automatically initializes the WebHaptics instance on mount and cleans it up on unmount:
+
+```tsx
+import { useWebHaptics } from '@accede-ai/webhaptics/react';
+
+function App() {
+  const { trigger, cancel, isSupported } = useWebHaptics();
+
+  const handleClick = () => {
+    trigger('medium');
+  };
+
+  return (
+    <button onClick={handleClick}>
+      Click me {!isSupported && '(haptics not supported)'}
+    </button>
+  );
+}
+```
+
+## API Reference
+
+### useWebHaptics(options?)
+
+Returns an object with haptic control methods.
+
+#### Parameters
+
+<ParamField path="options" type="WebHapticsOptions" optional>
+  Configuration options for the WebHaptics instance
+  
+  <Expandable>
+    <ParamField path="debug" type="boolean" default="false">
+      Enable debug mode with audio feedback (useful for desktop development)
+    </ParamField>
+    
+    <ParamField path="showSwitch" type="boolean" default="false">
+      Show haptic feedback toggle switch in the UI
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+#### Return Value
+
+<ResponseField name="trigger" type="(input?: HapticInput, options?: TriggerOptions) => void">
+  Triggers a haptic feedback pattern. Accepts:
+  - A number (duration in ms)
+  - A preset name string (`'light'`, `'medium'`, `'heavy'`, `'success'`, etc.)
+  - An array of numbers (alternating on/off durations)
+  - An array of Vibration objects
+  - A HapticPreset object
+</ResponseField>
+
+<ResponseField name="cancel" type="() => void">
+  Cancels any currently playing haptic pattern
+</ResponseField>
+
+<ResponseField name="isSupported" type="boolean">
+  Indicates whether haptic feedback is supported in the current environment
+</ResponseField>
+
+## Type Definitions
+
+```tsx
+interface Vibration {
+  duration: number;    // Duration in milliseconds
+  intensity?: number;  // 0-1, controls vibration strength (default: 0.5)
+  delay?: number;      // Delay before this vibration in ms
+}
+
+type HapticInput = 
+  | number              // Simple duration
+  | string              // Preset name
+  | number[]            // Alternating on/off pattern
+  | Vibration[]         // Full control
+  | HapticPreset;
+
+interface TriggerOptions {
+  intensity?: number;   // Default intensity for vibrations without explicit intensity
+}
+
+interface WebHapticsOptions {
+  debug?: boolean;
+  showSwitch?: boolean;
+}
+```
+
+## Examples
+
+### Form Validation Feedback
+
+```tsx
+import { useWebHaptics } from '@accede-ai/webhaptics/react';
+import { useState } from 'react';
+
+function LoginForm() {
+  const { trigger } = useWebHaptics();
+  const [email, setEmail] = useState('');
+  const [error, setError] = useState('');
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!email.includes('@')) {
+      setError('Invalid email');
+      trigger('error');
+      return;
+    }
+    
+    setError('');
+    trigger('success');
+    // Submit form...
+  };
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <input
+        type="email"
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+        placeholder="Email"
+      />
+      {error && <span className="error">{error}</span>}
+      <button type="submit">Login</button>
+    </form>
+  );
+}
+```
+
+### Interactive Button States
+
+```tsx
+import { useWebHaptics } from '@accede-ai/webhaptics/react';
+import { useState } from 'react';
+
+function ToggleButton() {
+  const { trigger } = useWebHaptics({ debug: true });
+  const [isActive, setIsActive] = useState(false);
+
+  const handleToggle = () => {
+    setIsActive(!isActive);
+    trigger(isActive ? 'light' : 'medium');
+  };
+
+  return (
+    <button
+      onClick={handleToggle}
+      className={isActive ? 'active' : ''}
+    >
+      {isActive ? 'ON' : 'OFF'}
+    </button>
+  );
+}
+```
+
+### Slider with Haptic Feedback
+
+```tsx
+import { useWebHaptics } from '@accede-ai/webhaptics/react';
+import { useState, useRef } from 'react';
+
+function HapticSlider() {
+  const { trigger } = useWebHaptics();
+  const [value, setValue] = useState(50);
+  const lastStepRef = useRef(5);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newValue = parseInt(e.target.value);
+    setValue(newValue);
+    
+    // Trigger haptic on every 10% increment
+    const currentStep = Math.floor(newValue / 10);
+    if (currentStep !== lastStepRef.current) {
+      trigger('selection');
+      lastStepRef.current = currentStep;
+    }
+  };
+
+  return (
+    <div>
+      <input
+        type="range"
+        min="0"
+        max="100"
+        value={value}
+        onChange={handleChange}
+      />
+      <span>{value}%</span>
+    </div>
+  );
+}
+```
+
+### Custom Haptic Pattern
+
+```tsx
+import { useWebHaptics } from '@accede-ai/webhaptics/react';
+
+function CustomPatternButton() {
+  const { trigger } = useWebHaptics();
+
+  const playCustomPattern = () => {
+    // Create a pulsing pattern
+    trigger([
+      { duration: 50, intensity: 0.3 },
+      { delay: 100, duration: 50, intensity: 0.6 },
+      { delay: 100, duration: 50, intensity: 0.9 },
+    ]);
+  };
+
+  return (
+    <button onClick={playCustomPattern}>
+      Play Custom Pattern
+    </button>
+  );
+}
+```
+
+## Common Patterns
+
+### Debug Mode for Desktop Development
+
+<Note>
+Enable debug mode during development to hear audio feedback on devices without haptic support:
+</Note>
+
+```tsx
+const { trigger } = useWebHaptics({
+  debug: process.env.NODE_ENV === 'development'
+});
+```
+
+### Conditional Haptics
+
+```tsx
+function NotificationBadge({ count }: { count: number }) {
+  const { trigger, isSupported } = useWebHaptics();
+  
+  useEffect(() => {
+    if (count > 0 && isSupported) {
+      trigger('nudge');
+    }
+  }, [count, isSupported, trigger]);
+  
+  return count > 0 ? <span className="badge">{count}</span> : null;
+}
+```
+
+### Preventing Haptic Spam
+
+```tsx
+import { useWebHaptics } from '@accede-ai/webhaptics/react';
+import { useCallback, useRef } from 'react';
+
+function useThrottledHaptic(minInterval = 100) {
+  const { trigger } = useWebHaptics();
+  const lastTriggerRef = useRef(0);
+
+  return useCallback((input?: HapticInput) => {
+    const now = Date.now();
+    if (now - lastTriggerRef.current >= minInterval) {
+      trigger(input);
+      lastTriggerRef.current = now;
+    }
+  }, [trigger, minInterval]);
+}
+
+// Usage
+function ScrollList() {
+  const triggerThrottled = useThrottledHaptic(150);
+  
+  return (
+    <div onScroll={() => triggerThrottled('selection')}>
+      {/* list items */}
+    </div>
+  );
+}
+```
+
+## Available Presets
+
+<CodeGroup>
+```tsx Notification
+trigger('success')  // Ascending double-tap
+trigger('warning')  // Two taps with hesitation
+trigger('error')    // Three rapid harsh taps
+```
+
+```tsx Impact
+trigger('light')    // Single light tap (15ms, 0.4 intensity)
+trigger('medium')   // Moderate tap (25ms, 0.7 intensity)
+trigger('heavy')    // Strong tap (35ms, 1.0 intensity)
+trigger('soft')     // Soft cushioned tap (40ms, 0.5 intensity)
+trigger('rigid')    // Hard crisp tap (10ms, 1.0 intensity)
+```
+
+```tsx Selection
+trigger('selection') // Subtle tap (8ms, 0.3 intensity)
+```
+
+```tsx Custom
+trigger('nudge')     // Two quick taps with pause
+trigger('buzz')      // Continuous buzzing (1000ms)
+```
+</CodeGroup>
+
+<Tip>
+The hook automatically manages cleanup, so you don't need to manually destroy the WebHaptics instance. The `trigger` and `cancel` functions are stable references that won't cause unnecessary re-renders.
+</Tip>

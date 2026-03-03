@@ -1,0 +1,161 @@
+---
+title: WebHaptics
+description: Core WebHaptics class API reference
+---
+
+## Constructor
+
+Create a new WebHaptics instance.
+
+```typescript
+const haptics = new WebHaptics(options?)
+```
+
+<ParamField path="options" type="WebHapticsOptions">
+  Optional configuration object
+
+  <ParamField path="debug" type="boolean" default="false">
+    Enable debug mode with audio feedback and visual indicators
+  </ParamField>
+
+  <ParamField path="showSwitch" type="boolean" default="false">
+    Show the haptic feedback toggle switch in the UI
+  </ParamField>
+</ParamField>
+
+## Methods
+
+### trigger()
+
+Trigger a haptic vibration pattern.
+
+```typescript
+await haptics.trigger(input?, options?)
+```
+
+<ParamField path="input" type="HapticInput" default="[{ duration: 25, intensity: 0.7 }]">
+  The haptic pattern to trigger. Can be:
+  - `number` - Single vibration duration in milliseconds
+  - `string` - Preset name (e.g., `"success"`, `"error"`)
+  - `number[]` - Array of alternating on/off durations
+  - `Vibration[]` - Array of vibration objects with duration, intensity, and delay
+  - `HapticPreset` - Preset object with a pattern array
+</ParamField>
+
+<ParamField path="options" type="TriggerOptions">
+  Optional trigger configuration
+
+  <ParamField path="intensity" type="number" default="0.5">
+    Default intensity for vibrations (0-1). Individual vibrations can override this.
+  </ParamField>
+</ParamField>
+
+<ResponseField name="Promise" type="Promise<void>">
+  Returns a promise that resolves when the haptic pattern completes
+</ResponseField>
+
+#### Examples
+
+```typescript
+// Simple duration
+await haptics.trigger(100)
+
+// Preset by name
+await haptics.trigger("success")
+
+// Alternating pattern (on/off/on/off)
+await haptics.trigger([50, 100, 50])
+
+// Full control with vibration objects
+await haptics.trigger([
+  { duration: 30, intensity: 0.5 },
+  { delay: 60, duration: 40, intensity: 1 }
+])
+
+// Override default intensity
+await haptics.trigger("medium", { intensity: 0.8 })
+```
+
+### cancel()
+
+Cancel any currently running haptic pattern.
+
+```typescript
+haptics.cancel()
+```
+
+Stops both native vibration and visual/audio feedback immediately.
+
+### destroy()
+
+Clean up the WebHaptics instance and remove all DOM elements.
+
+```typescript
+haptics.destroy()
+```
+
+This method:
+- Cancels any active haptic patterns
+- Removes the haptic switch UI element
+- Closes the audio context (if debug mode was enabled)
+- Cleans up all internal resources
+
+Call this when you no longer need the instance to prevent memory leaks.
+
+### setDebug()
+
+Enable or disable debug mode.
+
+```typescript
+haptics.setDebug(debug)
+```
+
+<ParamField path="debug" type="boolean" required>
+  Whether to enable debug mode
+</ParamField>
+
+Debug mode provides:
+- Audio feedback for haptic events
+- Visual indicators
+- Console logging
+
+### setShowSwitch()
+
+Show or hide the haptic feedback toggle switch.
+
+```typescript
+haptics.setShowSwitch(show)
+```
+
+<ParamField path="show" type="boolean" required>
+  Whether to show the toggle switch
+</ParamField>
+
+The toggle switch appears in the bottom-left corner of the screen and allows users to enable/disable haptic feedback.
+
+## Static Properties
+
+### isSupported
+
+Check if haptic feedback is supported in the current environment.
+
+```typescript
+const supported = WebHaptics.isSupported
+```
+
+<ResponseField name="isSupported" type="boolean">
+  `true` if `navigator.vibrate()` is available, `false` otherwise
+</ResponseField>
+
+Use this to check browser support before initializing haptics:
+
+```typescript
+if (WebHaptics.isSupported) {
+  const haptics = new WebHaptics()
+  await haptics.trigger("success")
+}
+```
+
+## Type Definitions
+
+See [Types](/api/types) for complete type definitions including `WebHapticsOptions`, `HapticInput`, `TriggerOptions`, and `Vibration`.

@@ -1,0 +1,361 @@
+---
+title: Presets
+description: Built-in haptic feedback presets
+---
+
+WebHaptics includes 11 built-in presets inspired by iOS haptic feedback patterns.
+
+## Notification Presets
+
+Based on `UINotificationFeedbackGenerator` from iOS.
+
+### success
+
+Ascending double-tap indicating success.
+
+```typescript
+await haptics.trigger('success')
+```
+
+**Pattern:**
+```typescript
+[
+  { duration: 30, intensity: 0.5 },
+  { delay: 60, duration: 40, intensity: 1 }
+]
+```
+
+<ParamField path="Feel" type="string">
+  Light tap followed by a stronger tap, creating an upward momentum that feels positive and confirming.
+</ParamField>
+
+---
+
+### warning
+
+Two taps with hesitation indicating a warning.
+
+```typescript
+await haptics.trigger('warning')
+```
+
+**Pattern:**
+```typescript
+[
+  { duration: 40, intensity: 0.8 },
+  { delay: 100, duration: 40, intensity: 0.6 }
+]
+```
+
+<ParamField path="Feel" type="string">
+  Strong tap, longer pause, then a softer tap. The hesitation creates uncertainty, signaling caution.
+</ParamField>
+
+---
+
+### error
+
+Three rapid harsh taps indicating an error.
+
+```typescript
+await haptics.trigger('error')
+```
+
+**Pattern:**
+```typescript
+[
+  { duration: 40, intensity: 0.9 },
+  { delay: 40, duration: 40, intensity: 0.9 },
+  { delay: 40, duration: 40, intensity: 0.9 }
+]
+```
+
+<ParamField path="Feel" type="string">
+  Three sharp, rapid taps with short gaps. The intensity and repetition convey urgency and alert the user to a problem.
+</ParamField>
+
+---
+
+## Impact Presets
+
+Based on `UIImpactFeedbackGenerator` from iOS.
+
+### light
+
+Single light tap indicating a minor impact.
+
+```typescript
+await haptics.trigger('light')
+```
+
+**Pattern:**
+```typescript
+[
+  { duration: 15, intensity: 0.4 }
+]
+```
+
+<ParamField path="Feel" type="string">
+  Brief, gentle tap. Perfect for subtle interactions like hovering or minor state changes.
+</ParamField>
+
+<ParamField path="Use Cases" type="string">
+  Hover effects, checkbox toggles, subtle UI feedback
+</ParamField>
+
+---
+
+### medium
+
+Moderate tap for standard interactions.
+
+```typescript
+await haptics.trigger('medium')
+```
+
+**Pattern:**
+```typescript
+[
+  { duration: 25, intensity: 0.7 }
+]
+```
+
+<ParamField path="Feel" type="string">
+  Balanced tap with moderate strength. The default preset for most interactions.
+</ParamField>
+
+<ParamField path="Use Cases" type="string">
+  Button clicks, navigation, standard UI interactions
+</ParamField>
+
+---
+
+### heavy
+
+Strong tap for significant interactions.
+
+```typescript
+await haptics.trigger('heavy')
+```
+
+**Pattern:**
+```typescript
+[
+  { duration: 35, intensity: 1 }
+]
+```
+
+<ParamField path="Feel" type="string">
+  Strong, pronounced tap with full intensity. Conveys importance and weight.
+</ParamField>
+
+<ParamField path="Use Cases" type="string">
+  Confirmations, deletions, important actions, drag-and-drop
+</ParamField>
+
+---
+
+### soft
+
+Soft, cushioned tap with a rounded feel.
+
+```typescript
+await haptics.trigger('soft')
+```
+
+**Pattern:**
+```typescript
+[
+  { duration: 40, intensity: 0.5 }
+]
+```
+
+<ParamField path="Feel" type="string">
+  Longer duration but moderate intensity, creating a soft, cushioned sensation.
+</ParamField>
+
+<ParamField path="Use Cases" type="string">
+  Gentle notifications, soft transitions, relaxed interactions
+</ParamField>
+
+---
+
+### rigid
+
+Hard, crisp tap with a precise feel.
+
+```typescript
+await haptics.trigger('rigid')
+```
+
+**Pattern:**
+```typescript
+[
+  { duration: 10, intensity: 1 }
+]
+```
+
+<ParamField path="Feel" type="string">
+  Very short but full intensity, creating a sharp, precise sensation.
+</ParamField>
+
+<ParamField path="Use Cases" type="string">
+  Precise selections, snapping to positions, mechanical interactions
+</ParamField>
+
+---
+
+## Selection Preset
+
+Based on `UISelectionFeedbackGenerator` from iOS.
+
+### selection
+
+Subtle tap for selection changes.
+
+```typescript
+await haptics.trigger('selection')
+```
+
+**Pattern:**
+```typescript
+[
+  { duration: 8, intensity: 0.3 }
+]
+```
+
+<ParamField path="Feel" type="string">
+  Very brief, gentle tap. Almost imperceptible but provides subtle feedback.
+</ParamField>
+
+<ParamField path="Use Cases" type="string">
+  Picker scrolling, carousel navigation, selection changes in lists
+</ParamField>
+
+---
+
+## Custom Presets
+
+Additional patterns for common use cases.
+
+### nudge
+
+Two quick taps with a pause, indicating a nudge or reminder.
+
+```typescript
+await haptics.trigger('nudge')
+```
+
+**Pattern:**
+```typescript
+[
+  { duration: 80, intensity: 0.8 },
+  { delay: 80, duration: 50, intensity: 0.3 }
+]
+```
+
+<ParamField path="Feel" type="string">
+  Strong initial tap followed by a gentler tap after a pause. Like a gentle poke to get attention.
+</ParamField>
+
+<ParamField path="Use Cases" type="string">
+  Notifications, reminders, getting user attention
+</ParamField>
+
+---
+
+### buzz
+
+Rapid, low-intensity taps creating a buzzing effect.
+
+```typescript
+await haptics.trigger('buzz')
+```
+
+**Pattern:**
+```typescript
+[
+  { duration: 1000, intensity: 1 }
+]
+```
+
+<ParamField path="Feel" type="string">
+  Continuous vibration for 1 second at full intensity. Creates a sustained buzzing sensation.
+</ParamField>
+
+<ParamField path="Use Cases" type="string">
+  Alarms, alerts, timers, urgent notifications
+</ParamField>
+
+---
+
+## Preset Comparison Table
+
+| Preset | Duration | Intensity | Feel | Best For |
+|--------|----------|-----------|------|----------|
+| `light` | 15ms | 0.4 | Gentle tap | Subtle interactions |
+| `selection` | 8ms | 0.3 | Very subtle | Picker scrolling |
+| `medium` | 25ms | 0.7 | Balanced | Standard clicks |
+| `soft` | 40ms | 0.5 | Cushioned | Gentle notifications |
+| `rigid` | 10ms | 1.0 | Crisp | Precise selections |
+| `heavy` | 35ms | 1.0 | Strong | Important actions |
+| `success` | Multi-tap | 0.5→1.0 | Ascending | Success feedback |
+| `warning` | Multi-tap | 0.8→0.6 | Hesitant | Caution alerts |
+| `error` | Multi-tap | 0.9×3 | Harsh | Error alerts |
+| `nudge` | Multi-tap | 0.8→0.3 | Poking | Reminders |
+| `buzz` | 1000ms | 1.0 | Continuous | Alarms |
+
+## Using Presets
+
+Presets can be triggered by name:
+
+```typescript
+// Simple usage
+await haptics.trigger('success')
+
+// With custom intensity
+await haptics.trigger('medium', { intensity: 0.9 })
+
+// In event handlers
+button.addEventListener('click', () => {
+  haptics.trigger('light')
+})
+```
+
+## Creating Custom Presets
+
+You can create your own presets using the `HapticPreset` type:
+
+```typescript
+import type { HapticPreset } from '@builderbot/web-haptics'
+
+const myPreset: HapticPreset = {
+  pattern: [
+    { duration: 50, intensity: 0.6 },
+    { delay: 50, duration: 50, intensity: 0.8 },
+    { delay: 50, duration: 50, intensity: 1.0 }
+  ]
+}
+
+await haptics.trigger(myPreset)
+```
+
+## Preset Implementation
+
+All presets are defined in the source code at `src/lib/web-haptics/patterns.ts`:
+
+```typescript
+export const defaultPatterns = {
+  success: { pattern: [/*...*/] },
+  warning: { pattern: [/*...*/] },
+  error: { pattern: [/*...*/] },
+  light: { pattern: [/*...*/] },
+  medium: { pattern: [/*...*/] },
+  heavy: { pattern: [/*...*/] },
+  soft: { pattern: [/*...*/] },
+  rigid: { pattern: [/*...*/] },
+  selection: { pattern: [/*...*/] },
+  nudge: { pattern: [/*...*/] },
+  buzz: { pattern: [/*...*/] }
+} as const
+```

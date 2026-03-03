@@ -1,0 +1,412 @@
+---
+title: Vue Integration
+description: Use WebHaptics in Vue applications with the useWebHaptics composable
+---
+
+# Vue Integration
+
+The Vue integration provides a `useWebHaptics` composable that manages the haptics instance lifecycle with Vue's reactivity system.
+
+## Installation
+
+<Steps>
+  <Step title="Install the package">
+    ```bash
+    npm install @accede-ai/webhaptics
+    ```
+  </Step>
+
+  <Step title="Import the composable">
+    ```typescript
+    import { useWebHaptics } from '@accede-ai/webhaptics/vue';
+    ```
+  </Step>
+</Steps>
+
+## Basic Usage
+
+The composable automatically initializes on component mount and cleans up on unmount:
+
+```vue
+<script setup lang="ts">
+import { useWebHaptics } from '@accede-ai/webhaptics/vue';
+
+const { trigger, cancel, isSupported } = useWebHaptics();
+
+const handleClick = () => {
+  trigger('medium');
+};
+</script>
+
+<template>
+  <button @click="handleClick">
+    Click me
+    <span v-if="!isSupported">(haptics not supported)</span>
+  </button>
+</template>
+```
+
+## API Reference
+
+### useWebHaptics(options?)
+
+Returns an object with haptic control methods.
+
+#### Parameters
+
+<ParamField path="options" type="WebHapticsOptions" optional>
+  Configuration options for the WebHaptics instance
+  
+  <Expandable>
+    <ParamField path="debug" type="boolean" default="false">
+      Enable debug mode with audio feedback. Watched reactively - changes will update the instance.
+    </ParamField>
+    
+    <ParamField path="showSwitch" type="boolean" default="false">
+      Show haptic feedback toggle switch in the UI
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+#### Return Value
+
+<ResponseField name="trigger" type="(input?: HapticInput, options?: TriggerOptions) => void">
+  Triggers a haptic feedback pattern. Accepts:
+  - A number (duration in ms)
+  - A preset name string (`'light'`, `'medium'`, `'heavy'`, `'success'`, etc.)
+  - An array of numbers (alternating on/off durations)
+  - An array of Vibration objects
+  - A HapticPreset object
+</ResponseField>
+
+<ResponseField name="cancel" type="() => void">
+  Cancels any currently playing haptic pattern
+</ResponseField>
+
+<ResponseField name="isSupported" type="boolean">
+  Indicates whether haptic feedback is supported in the current environment
+</ResponseField>
+
+## Type Definitions
+
+```typescript
+interface Vibration {
+  duration: number;    // Duration in milliseconds
+  intensity?: number;  // 0-1, controls vibration strength (default: 0.5)
+  delay?: number;      // Delay before this vibration in ms
+}
+
+type HapticInput = 
+  | number              // Simple duration
+  | string              // Preset name
+  | number[]            // Alternating on/off pattern
+  | Vibration[]         // Full control
+  | HapticPreset;
+
+interface TriggerOptions {
+  intensity?: number;   // Default intensity for vibrations without explicit intensity
+}
+
+interface WebHapticsOptions {
+  debug?: boolean;
+  showSwitch?: boolean;
+}
+```
+
+## Examples
+
+### Form Validation Feedback
+
+```vue
+<script setup lang="ts">
+import { useWebHaptics } from '@accede-ai/webhaptics/vue';
+import { ref } from 'vue';
+
+const { trigger } = useWebHaptics();
+const email = ref('');
+const error = ref('');
+
+const handleSubmit = () => {
+  if (!email.value.includes('@')) {
+    error.value = 'Invalid email';
+    trigger('error');
+    return;
+  }
+  
+  error.value = '';
+  trigger('success');
+  // Submit form...
+};
+</script>
+
+<template>
+  <form @submit.prevent="handleSubmit">
+    <input
+      v-model="email"
+      type="email"
+      placeholder="Email"
+    />
+    <span v-if="error" class="error">{{ error }}</span>
+    <button type="submit">Login</button>
+  </form>
+</template>
+```
+
+### Interactive Toggle with Reactive Debug Mode
+
+```vue
+<script setup lang="ts">
+import { useWebHaptics } from '@accede-ai/webhaptics/vue';
+import { ref } from 'vue';
+
+const debugMode = ref(false);
+const { trigger } = useWebHaptics({ debug: debugMode.value });
+const isActive = ref(false);
+
+const handleToggle = () => {
+  isActive.value = !isActive.value;
+  trigger(isActive.value ? 'medium' : 'light');
+};
+</script>
+
+<template>
+  <div>
+    <button @click="handleToggle" :class="{ active: isActive }">
+      {{ isActive ? 'ON' : 'OFF' }}
+    </button>
+    
+    <label>
+      <input v-model="debugMode" type="checkbox" />
+      Debug Mode
+    </label>
+  </div>
+</template>
+```
+
+<Note>
+The `debug` option is watched reactively. When it changes, the instance updates automatically without needing to recreate the composable.
+</Note>
+
+### Slider with Step Feedback
+
+```vue
+<script setup lang="ts">
+import { useWebHaptics } from '@accede-ai/webhaptics/vue';
+import { ref, watch } from 'vue';
+
+const { trigger } = useWebHaptics();
+const value = ref(50);
+const lastStep = ref(5);
+
+watch(value, (newValue) => {
+  const currentStep = Math.floor(newValue / 10);
+  if (currentStep !== lastStep.value) {
+    trigger('selection');
+    lastStep.value = currentStep;
+  }
+});
+</script>
+
+<template>
+  <div>
+    <input
+      v-model.number="value"
+      type="range"
+      min="0"
+      max="100"
+    />
+    <span>{{ value }}%</span>
+  </div>
+</template>
+```
+
+### List Selection with Feedback
+
+```vue
+<script setup lang="ts">
+import { useWebHaptics } from '@accede-ai/webhaptics/vue';
+import { ref } from 'vue';
+
+interface Item {
+  id: number;
+  name: string;
+}
+
+const { trigger } = useWebHaptics();
+const items = ref<Item[]>([
+  { id: 1, name: 'Item 1' },
+  { id: 2, name: 'Item 2' },
+  { id: 3, name: 'Item 3' },
+]);
+const selectedId = ref<number | null>(null);
+
+const selectItem = (id: number) => {
+  selectedId.value = id;
+  trigger('selection');
+};
+</script>
+
+<template>
+  <ul>
+    <li
+      v-for="item in items"
+      :key="item.id"
+      @click="selectItem(item.id)"
+      :class="{ selected: selectedId === item.id }"
+    >
+      {{ item.name }}
+    </li>
+  </ul>
+</template>
+```
+
+### Custom Haptic Pattern
+
+```vue
+<script setup lang="ts">
+import { useWebHaptics } from '@accede-ai/webhaptics/vue';
+import type { Vibration } from '@accede-ai/webhaptics/vue';
+
+const { trigger } = useWebHaptics();
+
+const playCustomPattern = () => {
+  const pattern: Vibration[] = [
+    { duration: 50, intensity: 0.3 },
+    { delay: 100, duration: 50, intensity: 0.6 },
+    { delay: 100, duration: 50, intensity: 0.9 },
+  ];
+  trigger(pattern);
+};
+</script>
+
+<template>
+  <button @click="playCustomPattern">
+    Play Custom Pattern
+  </button>
+</template>
+```
+
+## Common Patterns
+
+### Composable with Reactive Options
+
+```vue
+<script setup lang="ts">
+import { useWebHaptics } from '@accede-ai/webhaptics/vue';
+import { ref, computed } from 'vue';
+
+const isDevelopment = ref(import.meta.env.DEV);
+
+const { trigger } = useWebHaptics({
+  debug: isDevelopment.value,
+  showSwitch: true
+});
+</script>
+```
+
+### Notification System
+
+```vue
+<script setup lang="ts">
+import { useWebHaptics } from '@accede-ai/webhaptics/vue';
+import { ref, watch } from 'vue';
+
+const { trigger, isSupported } = useWebHaptics();
+const notifications = ref<string[]>([]);
+
+watch(() => notifications.value.length, (newCount, oldCount) => {
+  if (newCount > oldCount && isSupported) {
+    trigger('nudge');
+  }
+});
+
+const addNotification = (message: string) => {
+  notifications.value.push(message);
+};
+</script>
+
+<template>
+  <div>
+    <button @click="addNotification('New message!')">Send Notification</button>
+    <ul>
+      <li v-for="(notification, index) in notifications" :key="index">
+        {{ notification }}
+      </li>
+    </ul>
+  </div>
+</template>
+```
+
+### Long Press Button
+
+```vue
+<script setup lang="ts">
+import { useWebHaptics } from '@accede-ai/webhaptics/vue';
+import { ref } from 'vue';
+
+const { trigger } = useWebHaptics();
+const isPressed = ref(false);
+let pressTimer: number;
+
+const handleMouseDown = () => {
+  isPressed.value = true;
+  trigger('light');
+  
+  pressTimer = window.setTimeout(() => {
+    trigger('heavy');
+    handleLongPress();
+  }, 500);
+};
+
+const handleMouseUp = () => {
+  isPressed.value = false;
+  clearTimeout(pressTimer);
+};
+
+const handleLongPress = () => {
+  console.log('Long press detected!');
+};
+</script>
+
+<template>
+  <button
+    @mousedown="handleMouseDown"
+    @mouseup="handleMouseUp"
+    @mouseleave="handleMouseUp"
+    :class="{ pressed: isPressed }"
+  >
+    Hold me
+  </button>
+</template>
+```
+
+## Available Presets
+
+<CodeGroup>
+```typescript Notification
+trigger('success')  // Ascending double-tap
+trigger('warning')  // Two taps with hesitation
+trigger('error')    // Three rapid harsh taps
+```
+
+```typescript Impact
+trigger('light')    // Single light tap (15ms, 0.4 intensity)
+trigger('medium')   // Moderate tap (25ms, 0.7 intensity)
+trigger('heavy')    // Strong tap (35ms, 1.0 intensity)
+trigger('soft')     // Soft cushioned tap (40ms, 0.5 intensity)
+trigger('rigid')    // Hard crisp tap (10ms, 1.0 intensity)
+```
+
+```typescript Selection
+trigger('selection') // Subtle tap (8ms, 0.3 intensity)
+```
+
+```typescript Custom
+trigger('nudge')     // Two quick taps with pause
+trigger('buzz')      // Continuous buzzing (1000ms)
+```
+</CodeGroup>
+
+<Tip>
+The composable automatically handles lifecycle management using Vue's `onMounted` and `onUnmounted` hooks. The `debug` option is watched reactively, so changes will automatically update the WebHaptics instance.
+</Tip>

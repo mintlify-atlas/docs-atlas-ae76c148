@@ -1,0 +1,271 @@
+---
+title: Built-in Patterns
+description: Explore all built-in haptic patterns available in WebHaptics
+---
+
+WebHaptics provides 11 carefully crafted haptic patterns inspired by iOS feedback generators. Each pattern is designed to communicate specific interactions and states through vibration.
+
+## Pattern Categories
+
+Patterns are organized into three categories based on iOS UIFeedbackGenerator types:
+
+<Tabs>
+  <Tab title="Notification">
+    Feedback patterns for system notifications and alerts.
+
+    ### Success
+    An ascending double-tap indicating successful completion.
+
+    ```typescript
+    haptics.trigger('success');
+    ```
+
+    **Pattern Definition:**
+    ```typescript
+    [
+      { duration: 30, intensity: 0.5 },
+      { delay: 60, duration: 40, intensity: 1 }
+    ]
+    ```
+
+    ### Warning
+    Two taps with hesitation indicating a warning state.
+
+    ```typescript
+    haptics.trigger('warning');
+    ```
+
+    **Pattern Definition:**
+    ```typescript
+    [
+      { duration: 40, intensity: 0.8 },
+      { delay: 100, duration: 40, intensity: 0.6 }
+    ]
+    ```
+
+    ### Error
+    Three rapid harsh taps indicating an error.
+
+    ```typescript
+    haptics.trigger('error');
+    ```
+
+    **Pattern Definition:**
+    ```typescript
+    [
+      { duration: 40, intensity: 0.9 },
+      { delay: 40, duration: 40, intensity: 0.9 },
+      { delay: 40, duration: 40, intensity: 0.9 }
+    ]
+    ```
+  </Tab>
+
+  <Tab title="Impact">
+    Feedback patterns for physical impact events.
+
+    ### Light
+    Single light tap indicating a minor impact.
+
+    ```typescript
+    haptics.trigger('light');
+    ```
+
+    **Pattern Definition:**
+    ```typescript
+    [{ duration: 15, intensity: 0.4 }]
+    ```
+
+    ### Medium
+    Moderate tap for standard interactions.
+
+    ```typescript
+    haptics.trigger('medium');
+    ```
+
+    **Pattern Definition:**
+    ```typescript
+    [{ duration: 25, intensity: 0.7 }]
+    ```
+
+    ### Heavy
+    Strong tap for significant interactions.
+
+    ```typescript
+    haptics.trigger('heavy');
+    ```
+
+    **Pattern Definition:**
+    ```typescript
+    [{ duration: 35, intensity: 1 }]
+    ```
+
+    ### Soft
+    Soft, cushioned tap with a rounded feel.
+
+    ```typescript
+    haptics.trigger('soft');
+    ```
+
+    **Pattern Definition:**
+    ```typescript
+    [{ duration: 40, intensity: 0.5 }]
+    ```
+
+    ### Rigid
+    Hard, crisp tap with a precise feel.
+
+    ```typescript
+    haptics.trigger('rigid');
+    ```
+
+    **Pattern Definition:**
+    ```typescript
+    [{ duration: 10, intensity: 1 }]
+    ```
+  </Tab>
+
+  <Tab title="Selection & Custom">
+    Feedback for selection changes and custom interactions.
+
+    ### Selection
+    Subtle tap for selection changes (e.g., scrolling through options).
+
+    ```typescript
+    haptics.trigger('selection');
+    ```
+
+    **Pattern Definition:**
+    ```typescript
+    [{ duration: 8, intensity: 0.3 }]
+    ```
+
+    ### Nudge
+    Two quick taps with a pause, indicating a nudge or reminder.
+
+    ```typescript
+    haptics.trigger('nudge');
+    ```
+
+    **Pattern Definition:**
+    ```typescript
+    [
+      { duration: 80, intensity: 0.8 },
+      { delay: 80, duration: 50, intensity: 0.3 }
+    ]
+    ```
+
+    ### Buzz
+    Rapid, low-intensity taps creating a buzzing effect.
+
+    ```typescript
+    haptics.trigger('buzz');
+    ```
+
+    **Pattern Definition:**
+    ```typescript
+    [{ duration: 1000, intensity: 1 }]
+    ```
+  </Tab>
+</Tabs>
+
+## Usage Examples
+
+<Accordion title="Basic Pattern Triggering">
+  Trigger any built-in pattern by passing its name as a string:
+
+  ```typescript
+  import { WebHaptics } from '@foundrylabs/web-haptics';
+
+  const haptics = new WebHaptics();
+
+  // Trigger notification patterns
+  haptics.trigger('success');
+  haptics.trigger('warning');
+  haptics.trigger('error');
+
+  // Trigger impact patterns
+  haptics.trigger('light');
+  haptics.trigger('medium');
+  haptics.trigger('heavy');
+  haptics.trigger('soft');
+  haptics.trigger('rigid');
+
+  // Trigger selection pattern
+  haptics.trigger('selection');
+
+  // Trigger custom patterns
+  haptics.trigger('nudge');
+  haptics.trigger('buzz');
+  ```
+</Accordion>
+
+<Accordion title="Modifying Pattern Intensity">
+  Override the default intensity for any pattern:
+
+  ```typescript
+  // Trigger with 80% intensity
+  haptics.trigger('medium', { intensity: 0.8 });
+
+  // Trigger with 30% intensity for subtle feedback
+  haptics.trigger('heavy', { intensity: 0.3 });
+  ```
+
+  <Note>
+    The `intensity` option acts as a multiplier for vibrations that don't have an explicit intensity value. Individual vibrations with defined intensities in the pattern remain unchanged.
+  </Note>
+</Accordion>
+
+<Accordion title="Pattern Comparison">
+  Compare different patterns to find the right feel:
+
+  ```typescript
+  // Short and crisp
+  haptics.trigger('rigid');     // 10ms at intensity 1
+  haptics.trigger('selection'); // 8ms at intensity 0.3
+
+  // Medium duration
+  haptics.trigger('light');     // 15ms at intensity 0.4
+  haptics.trigger('medium');    // 25ms at intensity 0.7
+  haptics.trigger('heavy');     // 35ms at intensity 1
+
+  // Longer feedback
+  haptics.trigger('soft');      // 40ms at intensity 0.5
+  ```
+</Accordion>
+
+## Pattern Structure
+
+All patterns are defined using the `Vibration` interface:
+
+```typescript
+interface Vibration {
+  duration: number;    // Duration in milliseconds
+  intensity?: number;  // Intensity from 0 to 1
+  delay?: number;      // Delay before this vibration in milliseconds
+}
+```
+
+<Note>
+  Durations are clamped to a maximum of 1000ms due to browser haptic API limitations.
+</Note>
+
+## Invalid Pattern Handling
+
+<Warning>
+  If you pass an invalid pattern name, WebHaptics will log a warning and no vibration will occur:
+
+  ```typescript
+  haptics.trigger('invalid-pattern');
+  // Console: [web-haptics] Unknown preset: "invalid-pattern"
+  ```
+</Warning>
+
+## Next Steps
+
+<Card title="Intensity Control" icon="sliders" href="/concepts/intensity">
+  Learn how PWM modulation enables precise intensity control
+</Card>
+
+<Card title="Custom Patterns" icon="wand-magic-sparkles" href="/concepts/custom-patterns">
+  Create your own custom haptic patterns
+</Card>

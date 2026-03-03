@@ -1,0 +1,376 @@
+---
+title: Debug Mode
+description: Test haptic patterns on desktop with audio feedback
+---
+
+Debug mode enables haptic development and testing on desktop devices by providing audio feedback that mirrors vibration patterns. This is essential since most development happens on desktop machines without vibration support.
+
+## Enabling Debug Mode
+
+Enable debug mode through the constructor:
+
+```typescript
+import { WebHaptics } from '@foundrylabs/web-haptics';
+
+const haptics = new WebHaptics({ debug: true });
+```
+
+Or toggle it dynamically:
+
+```typescript
+const haptics = new WebHaptics();
+
+// Enable debug mode
+haptics.setDebug(true);
+
+// Disable debug mode
+haptics.setDebug(false);
+```
+
+## How Debug Mode Works
+
+When debug mode is enabled, WebHaptics creates an audio feedback system that:
+
+1. Generates click sounds synchronized with vibrations
+2. Varies pitch and volume based on intensity
+3. Works on both mobile (alongside vibration) and desktop (audio only)
+
+<Note>
+  On mobile devices with vibration support, debug mode plays audio **in addition to** vibration. On desktop, only audio plays.
+</Note>
+
+## Audio Feedback System
+
+The audio system is initialized in `ensureAudio()` (`index.ts:379-406`):
+
+```typescript
+private async ensureAudio(): Promise<void> {
+  if (!this.audioCtx && typeof AudioContext !== "undefined") {
+    this.audioCtx = new AudioContext();
+
+    this.audioFilter = this.audioCtx.createBiquadFilter();
+    this.audioFilter.type = "bandpass";
+    this.audioFilter.frequency.value = 4000;
+    this.audioFilter.Q.value = 8;
+
+    this.audioGain = this.audioCtx.createGain();
+    this.audioFilter.connect(this.audioGain);
+    this.audioGain.connect(this.audioCtx.destination);
+
+    const duration = 0.004;
+    this.audioBuffer = this.audioCtx.createBuffer(
+      1,
+      this.audioCtx.sampleRate * duration,
+      this.audioCtx.sampleRate
+    );
+    const data = this.audioBuffer.getChannelData(0);
+    for (let i = 0; i < data.length; i++) {
+      data[i] = (Math.random() * 2 - 1) * Math.exp(-i / 25);
+    }
+  }
+  if (this.audioCtx?.state === "suspended") {
+    await this.audioCtx.resume();
+  }
+}
+```
+
+<Accordion title="Audio System Components">
+  **AudioContext**
+  - Creates and manages the audio processing graph
+  - Resumes if suspended (common on page load)
+
+  **BiquadFilterNode**
+  - Type: Bandpass filter
+  - Center frequency: 4000 Hz (varies with intensity)
+  - Q value: 8 (narrow bandwidth for crisp clicks)
+
+  **GainNode**
+  - Controls volume based on intensity
+  - Range: 0 to 0.5 (scaled by intensity)
+
+  **AudioBuffer**
+  - Duration: 4ms (very short click)
+  - Contains exponentially decaying white noise
+  - Regenerated for each click with randomization
+</Accordion>
+
+## Click Sound Generation
+
+Each vibration triggers the `playClick()` function (`index.ts:352-377`):
+
+```typescript
+private playClick(intensity: number): void {
+  if (
+    !this.audioCtx ||
+    !this.audioFilter ||
+    !this.audioGain ||
+    !this.audioBuffer
+  )
+    return;
+
+  const data = this.audioBuffer.getChannelData(0);
+  for (let i = 0; i < data.length; i++) {
+    data[i] = (Math.random() * 2 - 1) * Math.exp(-i / 25);
+  }
+
+  this.audioGain.gain.value = 0.5 * intensity;
+
+  const baseFreq = 2000 + intensity * 2000;
+  const jitter = 1 + (Math.random() - 0.5) * 0.3;
+  this.audioFilter.frequency.value = baseFreq * jitter;
+
+  const source = this.audioCtx.createBufferSource();
+  source.buffer = this.audioBuffer;
+  source.connect(this.audioFilter);
+  source.onended = () => source.disconnect();
+  source.start();
+}
+```
+
+<Accordion title="Intensity-Based Audio Mapping">
+  **Volume (Gain)**
+  ```typescript
+  this.audioGain.gain.value = 0.5 * intensity;
+  ```
+  - Intensity 0.0: Silent
+  - Intensity 0.5: 25% volume
+  - Intensity 1.0: 50% volume (max)
+
+  **Pitch (Frequency)**
+  ```typescript
+  const baseFreq = 2000 + intensity * 2000;
+  const jitter = 1 + (Math.random() - 0.5) * 0.3;
+  this.audioFilter.frequency.value = baseFreq * jitter;
+  ```
+  - Intensity 0.0: ~2000 Hz (low pitch)
+  - Intensity 0.5: ~3000 Hz (medium pitch)
+  - Intensity 1.0: ~4000 Hz (high pitch)
+  - Jitter: ±15% randomization for natural variation
+
+  **Sound Texture**
+  ```typescript
+  data[i] = (Math.random() * 2 - 1) * Math.exp(-i / 25);
+  ```
+  - White noise with exponential decay
+  - Creates a "click" or "tap" sound
+  - Regenerated for each click (subtle variation)
+</Accordion>
+
+## Debug Mode Example
+
+<Tabs>
+  <Tab title="Basic Testing">
+    Test different patterns and hear the differences:
+
+    ```typescript
+    const haptics = new WebHaptics({ debug: true });
+
+    // Light tap - quiet, low pitch
+    haptics.trigger('light');
+
+    // Heavy tap - loud, high pitch
+    haptics.trigger('heavy');
+
+    // Success pattern - ascending pitch
+    haptics.trigger('success');
+
+    // Error pattern - three loud clicks
+    haptics.trigger('error');
+    ```
+  </Tab>
+
+  <Tab title="Intensity Testing">
+    Compare intensity variations:
+
+    ```typescript
+    const haptics = new WebHaptics({ debug: true });
+
+    // Low intensity - quiet, low pitch
+    haptics.trigger(100, { intensity: 0.2 });
+
+    await delay(500);
+
+    // Medium intensity - moderate volume and pitch
+    haptics.trigger(100, { intensity: 0.5 });
+
+    await delay(500);
+
+    // High intensity - loud, high pitch
+    haptics.trigger(100, { intensity: 1.0 });
+    ```
+  </Tab>
+
+  <Tab title="Custom Pattern Testing">
+    Test complex custom patterns:
+
+    ```typescript
+    const haptics = new WebHaptics({ debug: true });
+
+    // Heartbeat pattern
+    haptics.trigger([
+      { duration: 30, intensity: 0.8 },
+      { duration: 50, intensity: 1.0, delay: 50 },
+      { duration: 30, intensity: 0.8, delay: 300 },
+      { duration: 50, intensity: 1.0, delay: 50 }
+    ]);
+    ```
+
+    You'll hear the rhythm and intensity variations clearly.
+  </Tab>
+</Tabs>
+
+## Visual Debug Indicator
+
+Debug mode also injects a visual indicator on unsupported devices. The indicator is created in `ensureDOM()` (`index.ts:408-445`):
+
+```typescript
+const hapticLabel = document.createElement("label");
+hapticLabel.textContent = "Haptic feedback";
+hapticLabel.style.position = "fixed";
+hapticLabel.style.bottom = "10px";
+hapticLabel.style.left = "10px";
+hapticLabel.style.padding = "5px 10px";
+hapticLabel.style.backgroundColor = "rgba(0, 0, 0, 0.7)";
+hapticLabel.style.color = "white";
+hapticLabel.style.fontFamily = "sans-serif";
+hapticLabel.style.fontSize = "14px";
+hapticLabel.style.borderRadius = "4px";
+hapticLabel.style.zIndex = "9999";
+```
+
+<Note>
+  The visual indicator appears **only when haptics are not supported** (typically desktop). It provides visual feedback synchronized with audio clicks.
+</Note>
+
+## Optional Haptic Toggle Switch
+
+You can show a user-facing toggle switch:
+
+```typescript
+const haptics = new WebHaptics({
+  debug: true,
+  showSwitch: true  // Show toggle switch
+});
+```
+
+Or toggle it dynamically:
+
+```typescript
+haptics.setShowSwitch(true);  // Show
+haptics.setShowSwitch(false); // Hide
+```
+
+The switch appears in the bottom-left corner and allows users to enable/disable haptics.
+
+<Warning>
+  The switch is primarily for development. Most production apps should control haptics through their own UI or settings.
+</Warning>
+
+## Cleanup
+
+Disabling debug mode or destroying the instance cleans up audio resources:
+
+```typescript
+haptics.setDebug(false);
+// AudioContext closed, resources freed
+
+haptics.destroy();
+// All resources cleaned up
+```
+
+From `setDebug()` (`index.ts:246-255`):
+```typescript
+setDebug(debug: boolean): void {
+  this.debug = debug;
+  if (!debug && this.audioCtx) {
+    this.audioCtx.close();
+    this.audioCtx = null;
+    this.audioFilter = null;
+    this.audioGain = null;
+    this.audioBuffer = null;
+  }
+}
+```
+
+## Development Workflow
+
+<Accordion title="Recommended Workflow">
+  1. **Develop on desktop with debug mode:**
+     ```typescript
+     const haptics = new WebHaptics({ debug: true });
+     ```
+
+  2. **Fine-tune patterns using audio feedback:**
+     - Adjust durations, delays, and intensities
+     - Listen for the right "feel"
+     - Iterate quickly without mobile device
+
+  3. **Test on mobile device:**
+     ```typescript
+     const haptics = new WebHaptics({ debug: false });
+     ```
+
+  4. **Deploy with debug disabled:**
+     ```typescript
+     const haptics = new WebHaptics({
+       debug: false  // Production
+     });
+     ```
+</Accordion>
+
+<Accordion title="Conditional Debug Mode">
+  Enable debug mode only in development:
+
+  ```typescript
+  const haptics = new WebHaptics({
+    debug: process.env.NODE_ENV === 'development'
+  });
+  ```
+
+  Or based on URL parameter:
+
+  ```typescript
+  const params = new URLSearchParams(window.location.search);
+  const haptics = new WebHaptics({
+    debug: params.has('debug')
+  });
+  ```
+</Accordion>
+
+## Performance Impact
+
+<Accordion title="Audio System Overhead">
+  Debug mode adds minimal overhead:
+
+  - **AudioContext:** Created once, reused for all clicks
+  - **Audio nodes:** Small fixed memory footprint
+  - **Click generation:** ~4ms audio buffer, negligible processing
+  - **Network:** Zero (all audio generated in-browser)
+
+  Safe to leave enabled during development without performance concerns.
+</Accordion>
+
+## Browser Support
+
+Debug audio requires Web Audio API support:
+
+```typescript
+if (typeof AudioContext !== "undefined") {
+  this.audioCtx = new AudioContext();
+  // ...
+}
+```
+
+<Note>
+  Web Audio API is supported in all modern browsers (Chrome, Firefox, Safari, Edge). Fallback gracefully degrades to visual-only feedback on unsupported browsers.
+</Note>
+
+## Next Steps
+
+<Card title="Built-in Patterns" icon="book" href="/concepts/patterns">
+  Explore all built-in patterns to test with debug mode
+</Card>
+
+<Card title="Custom Patterns" icon="wand-magic-sparkles" href="/concepts/custom-patterns">
+  Create and test custom patterns using debug audio feedback
+</Card>

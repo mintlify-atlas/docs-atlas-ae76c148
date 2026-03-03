@@ -1,0 +1,360 @@
+---
+title: Custom Patterns
+description: Create expressive custom haptic patterns for unique interactions
+---
+
+WebHaptics supports multiple input formats for creating custom haptic patterns, from simple single vibrations to complex multi-step sequences.
+
+## Input Formats
+
+WebHaptics accepts four different input types through the `HapticInput` union type:
+
+```typescript
+type HapticInput = number | string | HapticPattern | HapticPreset;
+```
+
+<Tabs>
+  <Tab title="Number">
+    The simplest format: a single duration in milliseconds.
+
+    ```typescript
+    // 50ms vibration at default intensity (0.5)
+    haptics.trigger(50);
+
+    // 200ms vibration
+    haptics.trigger(200);
+    ```
+
+    <Note>
+      Numbers are automatically converted to `[{ duration: n }]` internally.
+    </Note>
+  </Tab>
+
+  <Tab title="String">
+    Reference a built-in preset pattern by name.
+
+    ```typescript
+    // Use any built-in pattern
+    haptics.trigger('success');
+    haptics.trigger('medium');
+    haptics.trigger('error');
+    ```
+
+    See the [Built-in Patterns](/concepts/patterns) page for all available presets.
+  </Tab>
+
+  <Tab title="Number Array">
+    Alternating on/off pattern using simple numbers.
+
+    ```typescript
+    // [on, off, on, off, ...]
+    haptics.trigger([50, 100, 50, 100, 50]);
+    // 50ms on → 100ms off → 50ms on → 100ms off → 50ms on
+    ```
+
+    <Warning>
+      The first number is always "on". Odd-indexed numbers (positions 1, 3, 5...) are treated as delays (off time).
+    </Warning>
+  </Tab>
+
+  <Tab title="Vibration Array">
+    Full control with explicit `Vibration` objects.
+
+    ```typescript
+    haptics.trigger([
+      { duration: 50, intensity: 0.8 },
+      { duration: 100, intensity: 0.5, delay: 50 },
+      { duration: 50, intensity: 1.0 }
+    ]);
+    ```
+
+    Most flexible format with per-vibration intensity and delay control.
+  </Tab>
+</Tabs>
+
+## Vibration Interface
+
+The `Vibration` interface provides full control over each haptic event:
+
+```typescript
+interface Vibration {
+  duration: number;    // Duration in milliseconds (required)
+  intensity?: number;  // Intensity from 0 to 1 (optional)
+  delay?: number;      // Delay before this vibration in milliseconds (optional)
+}
+```
+
+<Accordion title="Property Details">
+  **duration** (required)
+  - Length of the vibration in milliseconds
+  - Maximum value: 1000ms (browser limitation)
+  - Must be a finite non-negative number
+
+  **intensity** (optional)
+  - Vibration strength from 0 (off) to 1 (maximum)
+  - Defaults to global intensity option or 0.5
+  - Implemented via [PWM modulation](/concepts/intensity)
+
+  **delay** (optional)
+  - Silent pause before this vibration starts
+  - Useful for creating rhythmic patterns
+  - Must be a finite non-negative number
+</Accordion>
+
+## Pattern Examples
+
+<Accordion title="Double Tap">
+  Two quick taps with a short pause:
+
+  ```typescript
+  haptics.trigger([
+    { duration: 30 },
+    { duration: 30, delay: 50 }
+  ]);
+  ```
+</Accordion>
+
+<Accordion title="Ascending Intensity">
+  Three taps with increasing strength:
+
+  ```typescript
+  haptics.trigger([
+    { duration: 40, intensity: 0.3 },
+    { duration: 40, intensity: 0.6, delay: 60 },
+    { duration: 40, intensity: 1.0, delay: 60 }
+  ]);
+  ```
+</Accordion>
+
+<Accordion title="Heartbeat Pattern">
+  Simulate a heartbeat rhythm:
+
+  ```typescript
+  haptics.trigger([
+    { duration: 30, intensity: 0.8 },
+    { duration: 50, intensity: 1.0, delay: 50 },
+    { duration: 30, intensity: 0.8, delay: 300 },
+    { duration: 50, intensity: 1.0, delay: 50 }
+  ]);
+  ```
+</Accordion>
+
+<Accordion title="SOS Morse Code">
+  Classic distress signal (··· ─── ···):
+
+  ```typescript
+  haptics.trigger([
+    // S (···)
+    { duration: 50, intensity: 0.7 },
+    { duration: 50, intensity: 0.7, delay: 50 },
+    { duration: 50, intensity: 0.7, delay: 50 },
+    // Gap
+    { duration: 150, intensity: 1.0, delay: 150 },
+    // O (─── )
+    { duration: 150, intensity: 1.0, delay: 50 },
+    { duration: 150, intensity: 1.0, delay: 50 },
+    // Gap
+    { duration: 50, intensity: 0.7, delay: 150 },
+    // S (···)
+    { duration: 50, intensity: 0.7, delay: 50 },
+    { duration: 50, intensity: 0.7, delay: 50 }
+  ]);
+  ```
+</Accordion>
+
+<Accordion title="Fade Out">
+  Gradually decreasing intensity:
+
+  ```typescript
+  haptics.trigger([
+    { duration: 60, intensity: 1.0 },
+    { duration: 60, intensity: 0.75 },
+    { duration: 60, intensity: 0.5 },
+    { duration: 60, intensity: 0.25 }
+  ]);
+  ```
+</Accordion>
+
+<Accordion title="Notification Chime">
+  Three taps with varying intensity:
+
+  ```typescript
+  haptics.trigger([
+    { duration: 30, intensity: 0.5 },
+    { duration: 40, intensity: 0.8, delay: 60 },
+    { duration: 50, intensity: 1.0, delay: 60 }
+  ]);
+  ```
+</Accordion>
+
+## Pattern Normalization
+
+WebHaptics normalizes all input formats into a `Vibration[]` array using the `normalizeInput` function (`index.ts:14-54`):
+
+```typescript
+function normalizeInput(input: HapticInput): {
+  vibrations: Vibration[];
+} | null {
+  if (typeof input === "number") {
+    return { vibrations: [{ duration: input }] };
+  }
+
+  if (typeof input === "string") {
+    const preset = defaultPatterns[input as keyof typeof defaultPatterns];
+    if (!preset) {
+      console.warn(`[web-haptics] Unknown preset: "${input}"`);
+      return null;
+    }
+    return { vibrations: preset.pattern.map((v) => ({ ...v })) };
+  }
+
+  if (Array.isArray(input)) {
+    if (input.length === 0) return { vibrations: [] };
+
+    // number[] shorthand — alternating on/off
+    if (typeof input[0] === "number") {
+      const nums = input as number[];
+      const vibrations: Vibration[] = [];
+      for (let i = 0; i < nums.length; i += 2) {
+        const delay = i > 0 ? nums[i - 1]! : 0;
+        vibrations.push({
+          ...(delay > 0 && { delay }),
+          duration: nums[i]!
+        });
+      }
+      return { vibrations };
+    }
+
+    // Vibration[]
+    return { vibrations: (input as Vibration[]).map((v) => ({ ...v })) };
+  }
+
+  // HapticPreset
+  return { vibrations: input.pattern.map((v) => ({ ...v })) };
+}
+```
+
+<Note>
+  Pattern copies are created (`map((v) => ({ ...v }))`) to prevent mutation of the original pattern definitions.
+</Note>
+
+## Creating Reusable Presets
+
+Define custom presets for consistency across your app:
+
+```typescript
+import type { HapticPreset } from '@foundrylabs/web-haptics';
+
+// Define custom presets
+const customPresets = {
+  notification: {
+    pattern: [
+      { duration: 30, intensity: 0.5 },
+      { duration: 40, intensity: 0.8, delay: 60 },
+      { duration: 50, intensity: 1.0, delay: 60 }
+    ]
+  },
+  heartbeat: {
+    pattern: [
+      { duration: 30, intensity: 0.8 },
+      { duration: 50, intensity: 1.0, delay: 50 },
+      { duration: 30, intensity: 0.8, delay: 300 },
+      { duration: 50, intensity: 1.0, delay: 50 }
+    ]
+  }
+} as const satisfies Record<string, HapticPreset>;
+
+// Use presets
+haptics.trigger(customPresets.notification);
+haptics.trigger(customPresets.heartbeat);
+```
+
+## Pattern Validation
+
+WebHaptics validates patterns before execution (`index.ts:173-187`):
+
+```typescript
+for (const vib of vibrations) {
+  if (vib.duration > MAX_PHASE_MS) vib.duration = MAX_PHASE_MS;
+  if (
+    !Number.isFinite(vib.duration) ||
+    vib.duration < 0 ||
+    (vib.delay !== undefined &&
+      (!Number.isFinite(vib.delay) || vib.delay < 0))
+  ) {
+    console.warn(
+      `[web-haptics] Invalid vibration values. ` +
+      `Durations and delays must be finite non-negative numbers.`
+    );
+    return;
+  }
+}
+```
+
+<Warning>
+  Invalid patterns will:
+  - Log a warning to the console
+  - Skip the vibration entirely
+  - Not throw an error (fail silently)
+</Warning>
+
+## Limitations
+
+<Accordion title="Browser Constraints">
+  **Maximum Duration:** 1000ms per vibration
+  ```typescript
+  const MAX_PHASE_MS = 1000;
+  ```
+
+  Longer durations are automatically clamped:
+  ```typescript
+  haptics.trigger(5000);
+  // Actually executes: 1000ms
+  ```
+
+  **Workaround for longer patterns:**
+  ```typescript
+  // Instead of one 5-second vibration
+  haptics.trigger(5000);
+
+  // Use multiple 1-second vibrations
+  haptics.trigger([
+    { duration: 1000 },
+    { duration: 1000 },
+    { duration: 1000 },
+    { duration: 1000 },
+    { duration: 1000 }
+  ]);
+  ```
+</Accordion>
+
+<Accordion title="Timing Precision">
+  Timing is subject to JavaScript event loop and browser scheduling:
+  - Small variations (1-5ms) are normal
+  - Very short durations (&lt;10ms) may feel inconsistent
+  - Use debug mode to test patterns during development
+</Accordion>
+
+## Testing Patterns
+
+Use [debug mode](/concepts/debug-mode) to test patterns on desktop:
+
+```typescript
+const haptics = new WebHaptics({ debug: true });
+
+haptics.trigger([
+  { duration: 50, intensity: 0.5 },
+  { duration: 100, intensity: 1.0, delay: 50 }
+]);
+// Hear audio clicks that mirror the vibration pattern
+```
+
+## Next Steps
+
+<Card title="Intensity Control" icon="sliders" href="/concepts/intensity">
+  Learn how PWM modulation enables precise intensity control
+</Card>
+
+<Card title="Debug Mode" icon="bug" href="/concepts/debug-mode">
+  Test custom patterns on desktop before deploying
+</Card>

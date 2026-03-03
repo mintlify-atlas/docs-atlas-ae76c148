@@ -1,0 +1,151 @@
+---
+title: PWM Modulation
+description: Understanding pulse-width modulation for haptic intensity control
+---
+
+## Overview
+
+WebHaptics uses **Pulse-Width Modulation (PWM)** to simulate variable intensity vibrations. Since the Web Vibration API only supports binary on/off states, PWM creates the perception of different intensities by rapidly toggling vibration on and off within fixed time cycles.
+
+## How PWM Works
+
+The `modulateVibration` function (index.ts:60-82) converts intensity values (0.0-1.0) into on/off patterns:
+
+```typescript
+function modulateVibration(duration: number, intensity: number): number[] {
+  if (intensity >= 1) return [duration];
+  if (intensity <= 0) return [];
+
+  const onTime = Math.max(1, Math.round(PWM_CYCLE * intensity));
+  const offTime = PWM_CYCLE - onTime;
+  const result: number[] = [];
+
+  let remaining = duration;
+  while (remaining >= PWM_CYCLE) {
+    result.push(onTime);
+    result.push(offTime);
+    remaining -= PWM_CYCLE;
+  }
+  // Handle remaining partial cycle...
+}
+```
+
+### Key Constants
+
+| Constant | Value | Purpose |
+|----------|-------|----------|
+| `PWM_CYCLE` | 20ms | Duration of each on/off cycle |
+| `TOGGLE_MIN` | 16ms | Minimum toggle interval at intensity 1.0 |
+| `TOGGLE_MAX` | 184ms | Additional range for lower intensities |
+| `MAX_PHASE_MS` | 1000ms | Browser haptic API window limit |
+
+## Intensity Mapping
+
+<Info>
+The PWM cycle divides each 20ms window into on-time and off-time based on intensity.
+</Info>
+
+### Example Calculations
+
+**Intensity 0.5** (50% power):
+- `onTime = max(1, round(20 * 0.5)) = 10ms`
+- `offTime = 20 - 10 = 10ms`
+- Pattern: `[10, 10, 10, 10, ...]` for equal on/off periods
+
+**Intensity 0.25** (25% power):
+- `onTime = max(1, round(20 * 0.25)) = 5ms`
+- `offTime = 20 - 5 = 15ms`
+- Pattern: `[5, 15, 5, 15, ...]` for short pulses
+
+**Intensity 1.0** (full power):
+- Returns `[duration]` directly - continuous vibration
+
+**Intensity 0.0** (no power):
+- Returns `[]` - no vibration
+
+## Visual Representation
+
+```
+Intensity 1.0:  ████████████████████  (continuous)
+Intensity 0.75: ███████████████░░░░░  (15ms on, 5ms off)
+Intensity 0.5:  ██████████░░░░░░░░░░  (10ms on, 10ms off)
+Intensity 0.25: █████░░░░░░░░░░░░░░░  (5ms on, 15ms off)
+Intensity 0.1:  ██░░░░░░░░░░░░░░░░░░  (2ms on, 18ms off)
+
+|←―――― 20ms PWM_CYCLE ――――→|
+```
+
+## Partial Cycle Handling
+
+<Accordion title="How are incomplete cycles processed?">
+When the remaining duration is less than a full PWM cycle, the algorithm proportionally scales the on/off times:
+
+```typescript
+if (remaining > 0) {
+  const remOn = Math.max(1, Math.round(remaining * intensity));
+  result.push(remOn);
+  const remOff = remaining - remOn;
+  if (remOff > 0) result.push(remOff);
+}
+```
+
+For example, with 15ms remaining at 0.5 intensity:
+- `remOn = max(1, round(15 * 0.5)) = 8ms`
+- `remOff = 15 - 8 = 7ms`
+- Adds: `[8, 7]`
+</Accordion>
+
+## Integration with Vibration API
+
+The modulated pattern is flattened and passed to `navigator.vibrate()`:
+
+```typescript
+navigator.vibrate(toVibratePattern(vibrations, defaultIntensity));
+```
+
+The `toVibratePattern` function (index.ts:88-132) applies PWM to each vibration object and concatenates the results into a single number array.
+
+<Note>
+The browser's Vibration API receives a flat array like `[10, 10, 10, 10, 5, 15]` where odd indices are vibration durations and even indices are pauses.
+</Note>
+
+## Performance Considerations
+
+### Timing Accuracy
+
+<Warning>
+Browser timing precision affects PWM accuracy. The 20ms cycle was chosen to balance:
+- **Perceptual smoothness**: Fast enough that pulses feel continuous
+- **API reliability**: Slow enough to avoid timing jitter
+- **Battery efficiency**: Not excessive API calls
+</Warning>
+
+### Toggle Frequency in Debug Mode
+
+For fallback visual/audio feedback, the library uses a different approach with `requestAnimationFrame`:
+
+```typescript
+const toggleInterval = TOGGLE_MIN + (1 - phase.intensity) * TOGGLE_MAX;
+// At intensity 1.0: 16ms between clicks
+// At intensity 0.5: 108ms between clicks
+// At intensity 0.0: 200ms between clicks
+```
+
+This creates a variable-frequency toggle rather than PWM, as RAF doesn't require pre-computed patterns.
+
+## Edge Cases
+
+<Accordion title="Minimum On-Time">
+The `Math.max(1, ...)` ensures at least 1ms on-time even at very low intensities. Without this, intensities below 0.05 would round to 0ms and produce no vibration.
+</Accordion>
+
+<Accordion title="Zero and Full Intensity">
+The function short-circuits for `intensity >= 1` and `intensity <= 0` to avoid unnecessary PWM computation:
+- **1.0**: Returns single duration value (no modulation)
+- **0.0**: Returns empty array (treated as silence)
+</Accordion>
+
+## Further Reading
+
+- [Vibration API Specification](https://www.w3.org/TR/vibration/)
+- [Pulse-Width Modulation (Wikipedia)](https://en.wikipedia.org/wiki/Pulse-width_modulation)

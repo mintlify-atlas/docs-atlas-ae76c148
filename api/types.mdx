@@ -1,0 +1,280 @@
+---
+title: Types
+description: TypeScript type definitions for WebHaptics
+---
+
+Complete TypeScript type definitions for the WebHaptics library.
+
+## Vibration
+
+Defines a single vibration segment with duration, intensity, and optional delay.
+
+```typescript
+interface Vibration {
+  duration: number
+  intensity?: number
+  delay?: number
+}
+```
+
+<ParamField path="duration" type="number" required>
+  Duration of the vibration in milliseconds. Must be a finite non-negative number.
+  
+  Maximum: 1000ms (browser haptic window limit)
+</ParamField>
+
+<ParamField path="intensity" type="number" default="0.5">
+  Intensity of the vibration, from 0 to 1.
+  
+  - `0` - No vibration (silent)
+  - `0.5` - Medium intensity
+  - `1` - Full intensity
+  
+  Uses PWM (pulse-width modulation) to simulate intensity on devices without native intensity support.
+</ParamField>
+
+<ParamField path="delay" type="number">
+  Optional delay before this vibration starts, in milliseconds. Must be a finite non-negative number.
+</ParamField>
+
+### Example
+
+```typescript
+const vibration: Vibration = {
+  duration: 50,
+  intensity: 0.8,
+  delay: 100
+}
+```
+
+## HapticPattern
+
+A haptic pattern can be either a simple number array or an array of Vibration objects.
+
+```typescript
+type HapticPattern = number[] | Vibration[]
+```
+
+### Number Array Format
+
+Alternating on/off durations:
+
+```typescript
+const pattern: HapticPattern = [50, 100, 50, 100, 50]
+// Vibrates for 50ms, pauses 100ms, vibrates 50ms, pauses 100ms, vibrates 50ms
+```
+
+### Vibration Array Format
+
+Full control with intensity and delay:
+
+```typescript
+const pattern: HapticPattern = [
+  { duration: 30, intensity: 0.5 },
+  { delay: 60, duration: 40, intensity: 1 }
+]
+```
+
+## HapticPreset
+
+Defines a reusable haptic preset with a pattern.
+
+```typescript
+interface HapticPreset {
+  pattern: Vibration[]
+}
+```
+
+<ParamField path="pattern" type="Vibration[]" required>
+  Array of Vibration objects defining the haptic pattern
+</ParamField>
+
+### Example
+
+```typescript
+const customPreset: HapticPreset = {
+  pattern: [
+    { duration: 40, intensity: 0.9 },
+    { delay: 40, duration: 40, intensity: 0.9 },
+    { delay: 40, duration: 40, intensity: 0.9 }
+  ]
+}
+
+await haptics.trigger(customPreset)
+```
+
+## HapticInput
+
+Union type accepting any valid haptic input format.
+
+```typescript
+type HapticInput = number | string | HapticPattern | HapticPreset
+```
+
+### Accepted Formats
+
+<Tabs>
+  <Tab title="Number">
+    Single vibration duration:
+    
+    ```typescript
+    await haptics.trigger(100)
+    ```
+  </Tab>
+  
+  <Tab title="String">
+    Preset name:
+    
+    ```typescript
+    await haptics.trigger('success')
+    ```
+    
+    See [Presets](/api/presets) for all available preset names.
+  </Tab>
+  
+  <Tab title="Number Array">
+    Alternating on/off pattern:
+    
+    ```typescript
+    await haptics.trigger([50, 100, 50])
+    ```
+  </Tab>
+  
+  <Tab title="Vibration Array">
+    Full control pattern:
+    
+    ```typescript
+    await haptics.trigger([
+      { duration: 30, intensity: 0.5 },
+      { delay: 60, duration: 40, intensity: 1 }
+    ])
+    ```
+  </Tab>
+  
+  <Tab title="Preset Object">
+    Custom preset object:
+    
+    ```typescript
+    const preset: HapticPreset = {
+      pattern: [{ duration: 50, intensity: 0.7 }]
+    }
+    await haptics.trigger(preset)
+    ```
+  </Tab>
+</Tabs>
+
+## TriggerOptions
+
+Options for the `trigger()` method.
+
+```typescript
+interface TriggerOptions {
+  intensity?: number
+}
+```
+
+<ParamField path="intensity" type="number" default="0.5">
+  Default intensity for all vibrations in the pattern (0-1).
+  
+  Individual `Vibration` objects can override this with their own `intensity` property.
+</ParamField>
+
+### Example
+
+```typescript
+// All vibrations will use 0.8 intensity by default
+await haptics.trigger('success', { intensity: 0.8 })
+
+// Override default intensity for specific vibrations
+await haptics.trigger(
+  [
+    { duration: 30 }, // Uses default 0.8
+    { duration: 40, intensity: 1 } // Overrides to 1.0
+  ],
+  { intensity: 0.8 }
+)
+```
+
+## WebHapticsOptions
+
+Configuration options for the WebHaptics constructor.
+
+```typescript
+interface WebHapticsOptions {
+  debug?: boolean
+  showSwitch?: boolean
+}
+```
+
+<ParamField path="debug" type="boolean" default="false">
+  Enable debug mode with audio feedback and visual indicators.
+  
+  When enabled:
+  - Audio click sounds play with each vibration
+  - Visual feedback is shown on screen
+  - Console logging is enabled
+  - Audio frequency varies with intensity (2000-4000 Hz)
+</ParamField>
+
+<ParamField path="showSwitch" type="boolean" default="false">
+  Show the haptic feedback toggle switch in the bottom-left corner.
+  
+  The switch allows users to enable/disable haptic feedback at runtime.
+</ParamField>
+
+### Example
+
+```typescript
+const haptics = new WebHaptics({
+  debug: true,
+  showSwitch: true
+})
+```
+
+## Type Guards
+
+You can use type guards to check input types:
+
+```typescript
+function isVibration(input: any): input is Vibration {
+  return (
+    typeof input === 'object' &&
+    input !== null &&
+    'duration' in input &&
+    typeof input.duration === 'number'
+  )
+}
+
+function isHapticPreset(input: any): input is HapticPreset {
+  return (
+    typeof input === 'object' &&
+    input !== null &&
+    'pattern' in input &&
+    Array.isArray(input.pattern)
+  )
+}
+```
+
+## Import Paths
+
+```typescript
+// Core library
+import { WebHaptics } from '@builderbot/web-haptics'
+import type {
+  Vibration,
+  HapticPattern,
+  HapticPreset,
+  HapticInput,
+  TriggerOptions,
+  WebHapticsOptions
+} from '@builderbot/web-haptics'
+
+// React
+import { useWebHaptics } from '@builderbot/web-haptics/react'
+
+// Vue
+import { useWebHaptics } from '@builderbot/web-haptics/vue'
+
+// Svelte
+import { createWebHaptics } from '@builderbot/web-haptics/svelte'
+```

@@ -1,0 +1,459 @@
+---
+title: Vanilla JavaScript
+description: Use WebHaptics with vanilla JavaScript and TypeScript
+---
+
+# Vanilla JavaScript
+
+The WebHaptics core library can be used directly in any JavaScript or TypeScript project without framework dependencies.
+
+## Installation
+
+<Steps>
+  <Step title="Install the package">
+    ```bash
+    npm install @accede-ai/webhaptics
+    ```
+  </Step>
+
+  <Step title="Import the class">
+    <CodeGroup>
+    ```typescript TypeScript
+    import { WebHaptics } from '@accede-ai/webhaptics';
+    ```
+
+    ```javascript ES Modules
+    import { WebHaptics } from '@accede-ai/webhaptics';
+    ```
+
+    ```javascript CommonJS
+    const { WebHaptics } = require('@accede-ai/webhaptics');
+    ```
+    </CodeGroup>
+  </Step>
+</Steps>
+
+## Basic Usage
+
+Create a WebHaptics instance and trigger haptic feedback:
+
+```typescript
+import { WebHaptics } from '@accede-ai/webhaptics';
+
+const haptics = new WebHaptics();
+
+// Trigger a preset pattern
+haptics.trigger('medium');
+
+// Clean up when done
+haptics.destroy();
+```
+
+## API Reference
+
+### new WebHaptics(options?)
+
+Creates a new WebHaptics instance.
+
+#### Parameters
+
+<ParamField path="options" type="WebHapticsOptions" optional>
+  Configuration options
+  
+  <Expandable>
+    <ParamField path="debug" type="boolean" default="false">
+      Enable debug mode with audio feedback. Useful for desktop development where haptics aren't supported.
+    </ParamField>
+    
+    <ParamField path="showSwitch" type="boolean" default="false">
+      Show a haptic feedback toggle switch in the UI (fixed position, bottom-left)
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+### Instance Methods
+
+<ResponseField name="trigger" type="(input?: HapticInput, options?: TriggerOptions) => Promise<void>">
+  Triggers a haptic feedback pattern. Returns a promise that resolves when the pattern completes.
+  
+  **Parameters:**
+  - `input`: The haptic pattern to play. Can be:
+    - `number` - Simple vibration duration in milliseconds
+    - `string` - Preset name (`'light'`, `'medium'`, `'heavy'`, `'success'`, `'error'`, etc.)
+    - `number[]` - Array of alternating on/off durations
+    - `Vibration[]` - Array of vibration objects with full control
+    - `HapticPreset` - Custom preset object
+  - `options.intensity` - Default intensity (0-1) for vibrations without explicit intensity
+</ResponseField>
+
+<ResponseField name="cancel" type="() => void">
+  Cancels any currently playing haptic pattern immediately
+</ResponseField>
+
+<ResponseField name="destroy" type="() => void">
+  Destroys the instance and cleans up all resources (DOM elements, audio context, timers)
+</ResponseField>
+
+<ResponseField name="setDebug" type="(debug: boolean) => void">
+  Dynamically enable or disable debug mode. When disabled, cleans up audio resources.
+</ResponseField>
+
+<ResponseField name="setShowSwitch" type="(show: boolean) => void">
+  Show or hide the haptic feedback toggle switch
+</ResponseField>
+
+### Static Properties
+
+<ResponseField name="WebHaptics.isSupported" type="boolean">
+  Static property indicating whether the Vibration API is supported in the current environment
+</ResponseField>
+
+## Type Definitions
+
+```typescript
+interface Vibration {
+  duration: number;    // Duration in milliseconds (max 1000ms per vibration)
+  intensity?: number;  // 0-1, controls vibration strength (default: 0.5)
+  delay?: number;      // Delay before this vibration in ms
+}
+
+type HapticPattern = number[] | Vibration[];
+
+interface HapticPreset {
+  pattern: Vibration[];
+}
+
+type HapticInput = 
+  | number              // Simple duration
+  | string              // Preset name
+  | HapticPattern       // Number array or Vibration array
+  | HapticPreset;       // Custom preset
+
+interface TriggerOptions {
+  intensity?: number;   // Default intensity for vibrations (0-1)
+}
+
+interface WebHapticsOptions {
+  debug?: boolean;
+  showSwitch?: boolean;
+}
+```
+
+## Examples
+
+### Simple Button Click
+
+```typescript
+import { WebHaptics } from '@accede-ai/webhaptics';
+
+const haptics = new WebHaptics();
+const button = document.getElementById('myButton');
+
+button?.addEventListener('click', () => {
+  haptics.trigger('medium');
+});
+
+// Clean up on page unload
+window.addEventListener('beforeunload', () => {
+  haptics.destroy();
+});
+```
+
+### Form Validation
+
+```typescript
+import { WebHaptics } from '@accede-ai/webhaptics';
+
+const haptics = new WebHaptics();
+const form = document.getElementById('loginForm') as HTMLFormElement;
+const emailInput = document.getElementById('email') as HTMLInputElement;
+
+form.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  
+  if (!emailInput.value.includes('@')) {
+    haptics.trigger('error');
+    showError('Invalid email address');
+    return;
+  }
+  
+  await haptics.trigger('success');
+  submitForm();
+});
+
+function showError(message: string) {
+  const errorEl = document.getElementById('error');
+  if (errorEl) errorEl.textContent = message;
+}
+
+function submitForm() {
+  console.log('Form submitted');
+}
+```
+
+### Range Slider with Step Feedback
+
+```typescript
+import { WebHaptics } from '@accede-ai/webhaptics';
+
+const haptics = new WebHaptics();
+const slider = document.getElementById('volume') as HTMLInputElement;
+let lastStep = 5;
+
+slider?.addEventListener('input', (e) => {
+  const value = parseInt((e.target as HTMLInputElement).value);
+  const currentStep = Math.floor(value / 10);
+  
+  if (currentStep !== lastStep) {
+    haptics.trigger('selection');
+    lastStep = currentStep;
+  }
+});
+```
+
+### Custom Haptic Patterns
+
+```typescript
+import { WebHaptics } from '@accede-ai/webhaptics';
+import type { Vibration } from '@accede-ai/webhaptics';
+
+const haptics = new WebHaptics({ debug: true });
+
+// Simple duration (200ms at default intensity)
+haptics.trigger(200);
+
+// Array of alternating on/off durations
+haptics.trigger([50, 100, 50, 100, 50]);
+
+// Full control with Vibration objects
+const crescendo: Vibration[] = [
+  { duration: 50, intensity: 0.3 },
+  { delay: 50, duration: 50, intensity: 0.5 },
+  { delay: 50, duration: 50, intensity: 0.7 },
+  { delay: 50, duration: 50, intensity: 1.0 },
+];
+haptics.trigger(crescendo);
+
+// Custom preset
+const heartbeat = {
+  pattern: [
+    { duration: 30, intensity: 0.8 },
+    { delay: 100, duration: 50, intensity: 1.0 },
+    { delay: 500, duration: 30, intensity: 0.8 },
+    { delay: 100, duration: 50, intensity: 1.0 },
+  ],
+};
+haptics.trigger(heartbeat);
+```
+
+### With TypeScript Types
+
+```typescript
+import { WebHaptics } from '@accede-ai/webhaptics';
+import type { HapticInput, Vibration, TriggerOptions } from '@accede-ai/webhaptics';
+
+class NotificationManager {
+  private haptics: WebHaptics;
+
+  constructor() {
+    this.haptics = new WebHaptics({ debug: process.env.NODE_ENV === 'development' });
+  }
+
+  async notify(type: 'info' | 'success' | 'warning' | 'error') {
+    const patterns: Record<string, HapticInput> = {
+      info: 'light',
+      success: 'success',
+      warning: 'warning',
+      error: 'error',
+    };
+
+    await this.haptics.trigger(patterns[type]);
+  }
+
+  destroy() {
+    this.haptics.destroy();
+  }
+}
+
+const notifications = new NotificationManager();
+notifications.notify('success');
+```
+
+### Long Press Detection
+
+```typescript
+import { WebHaptics } from '@accede-ai/webhaptics';
+
+const haptics = new WebHaptics();
+const button = document.getElementById('holdButton') as HTMLButtonElement;
+let pressTimer: number;
+
+button.addEventListener('mousedown', () => {
+  haptics.trigger('light');
+  
+  pressTimer = window.setTimeout(() => {
+    haptics.trigger('heavy');
+    onLongPress();
+  }, 500);
+});
+
+button.addEventListener('mouseup', () => {
+  clearTimeout(pressTimer);
+});
+
+button.addEventListener('mouseleave', () => {
+  clearTimeout(pressTimer);
+});
+
+function onLongPress() {
+  console.log('Long press detected!');
+}
+```
+
+### Async Pattern Sequencing
+
+```typescript
+import { WebHaptics } from '@accede-ai/webhaptics';
+
+const haptics = new WebHaptics();
+
+async function playSequence() {
+  await haptics.trigger('light');
+  await new Promise(resolve => setTimeout(resolve, 200));
+  await haptics.trigger('medium');
+  await new Promise(resolve => setTimeout(resolve, 200));
+  await haptics.trigger('heavy');
+}
+
+playSequence();
+```
+
+## Common Patterns
+
+### Feature Detection
+
+```typescript
+import { WebHaptics } from '@accede-ai/webhaptics';
+
+if (WebHaptics.isSupported) {
+  const haptics = new WebHaptics();
+  // Use haptics
+} else {
+  console.log('Haptics not supported on this device');
+  // Provide alternative feedback (visual, audio, etc.)
+}
+```
+
+### Debug Mode for Development
+
+```typescript
+const haptics = new WebHaptics({
+  debug: window.location.hostname === 'localhost',
+  showSwitch: true
+});
+```
+
+### Singleton Pattern
+
+```typescript
+// haptics.ts
+import { WebHaptics } from '@accede-ai/webhaptics';
+
+let instance: WebHaptics | null = null;
+
+export function getHaptics(): WebHaptics {
+  if (!instance) {
+    instance = new WebHaptics({ debug: true });
+  }
+  return instance;
+}
+
+export function destroyHaptics() {
+  if (instance) {
+    instance.destroy();
+    instance = null;
+  }
+}
+```
+
+```typescript
+// app.ts
+import { getHaptics, destroyHaptics } from './haptics';
+
+const haptics = getHaptics();
+haptics.trigger('medium');
+
+window.addEventListener('beforeunload', destroyHaptics);
+```
+
+### Throttled Haptics
+
+```typescript
+import { WebHaptics } from '@accede-ai/webhaptics';
+import type { HapticInput } from '@accede-ai/webhaptics';
+
+class ThrottledHaptics {
+  private haptics: WebHaptics;
+  private lastTrigger = 0;
+  private minInterval: number;
+
+  constructor(minInterval = 100) {
+    this.haptics = new WebHaptics();
+    this.minInterval = minInterval;
+  }
+
+  trigger(input?: HapticInput) {
+    const now = Date.now();
+    if (now - this.lastTrigger >= this.minInterval) {
+      this.haptics.trigger(input);
+      this.lastTrigger = now;
+    }
+  }
+
+  destroy() {
+    this.haptics.destroy();
+  }
+}
+
+const haptics = new ThrottledHaptics(150);
+
+// Won't spam haptics on rapid events
+document.addEventListener('scroll', () => {
+  haptics.trigger('selection');
+});
+```
+
+## Available Presets
+
+<CodeGroup>
+```typescript Notification
+haptics.trigger('success')  // Ascending double-tap (30ms + 40ms)
+haptics.trigger('warning')  // Two taps with hesitation (40ms + 40ms)
+haptics.trigger('error')    // Three rapid harsh taps (40ms × 3)
+```
+
+```typescript Impact
+haptics.trigger('light')    // Single light tap (15ms, 0.4 intensity)
+haptics.trigger('medium')   // Moderate tap (25ms, 0.7 intensity)
+haptics.trigger('heavy')    // Strong tap (35ms, 1.0 intensity)
+haptics.trigger('soft')     // Soft cushioned tap (40ms, 0.5 intensity)
+haptics.trigger('rigid')    // Hard crisp tap (10ms, 1.0 intensity)
+```
+
+```typescript Selection
+haptics.trigger('selection') // Subtle tap (8ms, 0.3 intensity)
+```
+
+```typescript Custom
+haptics.trigger('nudge')     // Two quick taps with pause
+haptics.trigger('buzz')      // Continuous buzzing (1000ms)
+```
+</CodeGroup>
+
+<Note>
+The WebHaptics class uses PWM (Pulse Width Modulation) to simulate different intensity levels on devices that only support on/off vibration. Each vibration is clamped to a maximum of 1000ms due to browser limitations.
+</Note>
+
+<Tip>
+Always call `destroy()` when you're done with a WebHaptics instance to clean up resources, especially in single-page applications where components mount and unmount frequently.
+</Tip>

@@ -1,0 +1,208 @@
+---
+title: createWebHaptics
+description: Svelte function for WebHaptics integration
+---
+
+Svelte function that creates and returns a WebHaptics instance with helper methods.
+
+## Usage
+
+```typescript
+import { createWebHaptics } from '@builderbot/web-haptics/svelte'
+
+const haptics = createWebHaptics(options?)
+```
+
+## Parameters
+
+<ParamField path="options" type="WebHapticsOptions">
+  Optional configuration object
+
+  <ParamField path="debug" type="boolean" default="false">
+    Enable debug mode with audio feedback and visual indicators
+  </ParamField>
+
+  <ParamField path="showSwitch" type="boolean" default="false">
+    Show the haptic feedback toggle switch in the UI
+  </ParamField>
+</ParamField>
+
+## Return Value
+
+Returns an object with the following properties:
+
+<ResponseField name="trigger" type="(input?: HapticInput, options?: TriggerOptions) => Promise<void> | undefined">
+  Function to trigger a haptic vibration pattern
+
+  - `input` - The haptic pattern (number, string preset, array, or object)
+  - `options` - Optional trigger configuration with `intensity` property
+  - Returns a promise that resolves when the pattern completes
+</ResponseField>
+
+<ResponseField name="cancel" type="() => void">
+  Function to cancel any currently running haptic pattern
+</ResponseField>
+
+<ResponseField name="destroy" type="() => void">
+  Function to clean up the WebHaptics instance
+</ResponseField>
+
+<ResponseField name="setDebug" type="(debug: boolean) => void">
+  Function to enable or disable debug mode
+</ResponseField>
+
+<ResponseField name="isSupported" type="boolean">
+  Whether haptic feedback is supported in the current browser
+</ResponseField>
+
+## Examples
+
+### Basic Usage
+
+```svelte
+<script>
+import { createWebHaptics } from '@builderbot/web-haptics/svelte'
+
+const { trigger, isSupported } = createWebHaptics()
+
+async function handleClick() {
+  await trigger('light')
+}
+</script>
+
+<button on:click={handleClick} disabled={!isSupported}>
+  Click me
+</button>
+```
+
+### With Cleanup
+
+```svelte
+<script>
+import { onDestroy } from 'svelte'
+import { createWebHaptics } from '@builderbot/web-haptics/svelte'
+
+const { trigger, destroy } = createWebHaptics({ debug: true })
+
+// Clean up on component unmount
+onDestroy(() => {
+  destroy()
+})
+
+function handleSuccess() {
+  trigger('success')
+}
+</script>
+
+<button on:click={handleSuccess}>
+  Trigger Success
+</button>
+```
+
+### Dynamic Debug Mode
+
+```svelte
+<script>
+import { createWebHaptics } from '@builderbot/web-haptics/svelte'
+
+let debugMode = false
+const { trigger, setDebug } = createWebHaptics()
+
+function toggleDebug() {
+  debugMode = !debugMode
+  setDebug(debugMode)
+}
+</script>
+
+<label>
+  <input type="checkbox" bind:checked={debugMode} on:change={toggleDebug} />
+  Debug Mode
+</label>
+
+<button on:click={() => trigger('medium')}>
+  Test Haptic
+</button>
+```
+
+### Custom Patterns
+
+```svelte
+<script>
+import { createWebHaptics } from '@builderbot/web-haptics/svelte'
+
+const { trigger, cancel } = createWebHaptics()
+
+async function playCustom() {
+  await trigger([
+    { duration: 30, intensity: 0.5 },
+    { delay: 60, duration: 40, intensity: 1 }
+  ], { intensity: 0.8 })
+}
+</script>
+
+<button on:click={playCustom}>Play Pattern</button>
+<button on:click={cancel}>Stop</button>
+```
+
+### Long-Running Pattern
+
+```svelte
+<script>
+import { createWebHaptics } from '@builderbot/web-haptics/svelte'
+
+const { trigger, cancel } = createWebHaptics()
+
+let isPlaying = false
+
+async function playBuzz() {
+  isPlaying = true
+  await trigger('buzz') // 1000ms duration
+  isPlaying = false
+}
+
+function stopBuzz() {
+  cancel()
+  isPlaying = false
+}
+</script>
+
+<button on:click={playBuzz} disabled={isPlaying}>
+  Play Buzz
+</button>
+<button on:click={stopBuzz} disabled={!isPlaying}>
+  Stop
+</button>
+```
+
+## Lifecycle Management
+
+Unlike React and Vue hooks, `createWebHaptics` does **not** automatically destroy the instance. You must call `destroy()` manually when you're done:
+
+```svelte
+<script>
+import { onDestroy } from 'svelte'
+import { createWebHaptics } from '@builderbot/web-haptics/svelte'
+
+const haptics = createWebHaptics()
+
+onDestroy(() => {
+  haptics.destroy()
+})
+</script>
+```
+
+## Vue Usage
+
+Vue uses `useWebHaptics` instead, which provides automatic lifecycle management:
+
+```typescript
+import { useWebHaptics } from '@builderbot/web-haptics/vue'
+
+const { trigger, cancel, isSupported } = useWebHaptics()
+```
+
+See [useWebHaptics](/api/use-web-haptics) for Vue documentation.
+
+## Type Definitions
+
+See [Types](/api/types) for complete type definitions.

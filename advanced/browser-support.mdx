@@ -1,0 +1,188 @@
+---
+title: Browser Support
+description: Browser compatibility and feature detection for WebHaptics
+---
+
+## Feature Detection
+
+WebHaptics provides a static `isSupported` property for runtime feature detection:
+
+```typescript
+static readonly isSupported: boolean =
+  typeof navigator !== "undefined" && typeof navigator.vibrate === "function";
+```
+
+**Source reference**: index.ts:155-156
+
+### Usage
+
+```javascript
+import { WebHaptics } from '@taktil/web-haptics';
+
+if (WebHaptics.isSupported) {
+  const haptics = new WebHaptics();
+  haptics.trigger('click');
+} else {
+  console.log('Vibration API not available');
+}
+```
+
+<Info>
+Even when `isSupported` returns `false`, you can still instantiate WebHaptics. The library provides visual/audio fallback feedback when debug mode is enabled.
+</Info>
+
+## Browser Compatibility
+
+### Desktop Browsers
+
+| Browser | Support | Notes |
+|---------|---------|-------|
+| Chrome | ✅ Yes | Full support on Android, limited on desktop |
+| Firefox | ✅ Yes | Android only |
+| Safari | ❌ No | Not supported (see workarounds) |
+| Edge | ✅ Yes | Windows with supported hardware |
+| Opera | ✅ Yes | Android only |
+
+<Warning>
+Most desktop browsers support the API but **hardware support is rare**. Laptops and desktop computers typically don't have vibration motors.
+</Warning>
+
+### Mobile Browsers
+
+| Browser | iOS | Android |
+|---------|-----|----------|
+| Safari | ❌ Not supported | N/A |
+| Chrome | ❌ Not supported | ✅ Full support |
+| Firefox | ❌ Not supported | ✅ Full support |
+| Samsung Internet | N/A | ✅ Full support |
+| Edge | ❌ Not supported | ✅ Full support |
+
+<Note>
+iOS does **not** support the Vibration API in any browser due to platform restrictions. This includes Chrome, Firefox, and third-party browsers on iOS, which all use WebKit under the hood.
+</Note>
+
+## Platform Limitations
+
+### iOS Restrictions
+
+Apple does not expose haptic controls to web browsers. Native iOS apps can use the Haptic Feedback API, but web content cannot.
+
+**Workarounds**:
+- Use the **debug mode** to provide visual feedback on iOS
+- Consider a native wrapper (Capacitor, React Native WebView) with a haptics bridge
+- Progressive enhancement: design UI that doesn't rely solely on haptics
+
+### Android Variations
+
+<Accordion title="Device-Specific Behavior">
+Android devices vary widely in haptic hardware:
+- **High-end devices**: Linear resonant actuators (LRA) with precise control
+- **Mid-range devices**: Eccentric rotating mass (ERM) motors with lag
+- **Budget devices**: May have weak or no vibration
+
+The same haptic pattern may feel completely different across devices. Test on real hardware when possible.
+</Accordion>
+
+### Security Context Requirements
+
+<Warning>
+The Vibration API requires a **secure context** (HTTPS or localhost). It will not work on `http://` pages in production.
+</Warning>
+
+```javascript
+if (window.isSecureContext && WebHaptics.isSupported) {
+  // Safe to use haptics
+} else {
+  // Fall back to other feedback
+}
+```
+
+## Permission Model
+
+<Info>
+The Vibration API does **not** require user permission. It can be triggered immediately after a user gesture (click, touch, keypress).
+</Info>
+
+However, **anti-abuse measures** exist:
+- Vibration is automatically canceled when the page loses focus
+- Browsers may throttle excessive vibration calls
+- Some browsers limit maximum duration per call (typically 10 seconds)
+
+## Testing Strategies
+
+### Development Environment
+
+```javascript
+const haptics = new WebHaptics({ debug: true });
+```
+
+Debug mode provides:
+- **Visual feedback**: Overlay label flashes on trigger
+- **Audio feedback**: Click sounds at varying pitches
+- Works on **all browsers**, including unsupported ones
+
+### User Agent Detection (Not Recommended)
+
+<Warning>
+Avoid user agent sniffing for feature detection. Use `WebHaptics.isSupported` instead.
+</Warning>
+
+❌ **Bad approach**:
+```javascript
+if (/Android/.test(navigator.userAgent)) {
+  // Fragile, breaks with new browsers
+}
+```
+
+✅ **Good approach**:
+```javascript
+if (WebHaptics.isSupported) {
+  // Future-proof, works with new implementations
+}
+```
+
+## Polyfills and Fallbacks
+
+WebHaptics **does not** polyfill the Vibration API on unsupported browsers. Instead, it provides:
+
+1. **Feature detection**: Check support before triggering
+2. **Debug mode**: Visual/audio feedback for testing
+3. **Graceful degradation**: Haptics enhance UX but shouldn't be required
+
+### Fallback Strategy Example
+
+```javascript
+import { WebHaptics } from '@taktil/web-haptics';
+
+const haptics = new WebHaptics();
+
+function confirmAction() {
+  // Haptic feedback on supported devices
+  if (WebHaptics.isSupported) {
+    haptics.trigger('success');
+  }
+  
+  // Always provide visual confirmation
+  showToast('Action confirmed');
+  
+  // Consider audio feedback as alternative
+  playSound('confirm.mp3');
+}
+```
+
+## Future Compatibility
+
+<Accordion title="Will iOS ever support the Vibration API?">
+As of 2026, Apple has not indicated plans to support the W3C Vibration API in Safari. However, they have implemented proprietary Taptic Engine APIs for native apps.
+
+If you need haptics on iOS:
+- Use a native wrapper framework (Capacitor, Cordova)
+- Implement a JavaScript bridge to native haptic APIs
+- Consider progressive web app (PWA) alternatives
+</Accordion>
+
+## Related Resources
+
+- [MDN: Vibration API](https://developer.mozilla.org/en-US/docs/Web/API/Vibration_API)
+- [Can I Use: Vibration API](https://caniuse.com/vibration)
+- [W3C Vibration API Specification](https://www.w3.org/TR/vibration/)
