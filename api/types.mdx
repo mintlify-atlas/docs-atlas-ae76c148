@@ -255,11 +255,23 @@ function isHapticPreset(input: any): input is HapticPreset {
 }
 ```
 
+## Additional Exports
+
+### version
+
+The current version of the library.
+
+```typescript
+import { version } from 'web-haptics'
+
+console.log(version) // "0.0.6"
+```
+
 ## Import Paths
 
 ```typescript
 // Core library
-import { WebHaptics } from '@builderbot/web-haptics'
+import { WebHaptics, defaultPatterns, version } from 'web-haptics'
 import type {
   Vibration,
   HapticPattern,
@@ -267,14 +279,14 @@ import type {
   HapticInput,
   TriggerOptions,
   WebHapticsOptions
-} from '@builderbot/web-haptics'
+} from 'web-haptics'
 
 // React
-import { useWebHaptics } from '@builderbot/web-haptics/react'
+import { useWebHaptics } from 'web-haptics/react'
 
 // Vue
-import { useWebHaptics } from '@builderbot/web-haptics/vue'
+import { useWebHaptics } from 'web-haptics/vue'
 
 // Svelte
-import { createWebHaptics } from '@builderbot/web-haptics/svelte'
+import { createWebHaptics } from 'web-haptics/svelte'
 ```

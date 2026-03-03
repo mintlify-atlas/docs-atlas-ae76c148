@@ -8,7 +8,7 @@ Svelte function that creates and returns a WebHaptics instance with helper metho
 ## Usage
 
 ```typescript
-import { createWebHaptics } from '@builderbot/web-haptics/svelte'
+import { createWebHaptics } from 'web-haptics/svelte'
 
 const haptics = createWebHaptics(options?)
 ```
@@ -61,7 +61,7 @@ Returns an object with the following properties:
 
 ```svelte
 <script>
-import { createWebHaptics } from '@builderbot/web-haptics/svelte'
+import { createWebHaptics } from 'web-haptics/svelte'
 
 const { trigger, isSupported } = createWebHaptics()
 
@@ -80,7 +80,7 @@ async function handleClick() {
 ```svelte
 <script>
 import { onDestroy } from 'svelte'
-import { createWebHaptics } from '@builderbot/web-haptics/svelte'
+import { createWebHaptics } from 'web-haptics/svelte'
 
 const { trigger, destroy } = createWebHaptics({ debug: true })
 
@@ -103,7 +103,7 @@ function handleSuccess() {
 
 ```svelte
 <script>
-import { createWebHaptics } from '@builderbot/web-haptics/svelte'
+import { createWebHaptics } from 'web-haptics/svelte'
 
 let debugMode = false
 const { trigger, setDebug } = createWebHaptics()
@@ -128,7 +128,7 @@ function toggleDebug() {
 
 ```svelte
 <script>
-import { createWebHaptics } from '@builderbot/web-haptics/svelte'
+import { createWebHaptics } from 'web-haptics/svelte'
 
 const { trigger, cancel } = createWebHaptics()
 
@@ -148,7 +148,7 @@ async function playCustom() {
 
 ```svelte
 <script>
-import { createWebHaptics } from '@builderbot/web-haptics/svelte'
+import { createWebHaptics } from 'web-haptics/svelte'
 
 const { trigger, cancel } = createWebHaptics()
 
@@ -181,7 +181,7 @@ Unlike React and Vue hooks, `createWebHaptics` does **not** automatically destro
 ```svelte
 <script>
 import { onDestroy } from 'svelte'
-import { createWebHaptics } from '@builderbot/web-haptics/svelte'
+import { createWebHaptics } from 'web-haptics/svelte'
 
 const haptics = createWebHaptics()
 
@@ -196,7 +196,7 @@ onDestroy(() => {
 Vue uses `useWebHaptics` instead, which provides automatic lifecycle management:
 
 ```typescript
-import { useWebHaptics } from '@builderbot/web-haptics/vue'
+import { useWebHaptics } from 'web-haptics/vue'
 
 const { trigger, cancel, isSupported } = useWebHaptics()
 ```

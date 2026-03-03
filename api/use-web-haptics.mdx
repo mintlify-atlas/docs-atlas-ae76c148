@@ -8,7 +8,7 @@ React hook that manages a WebHaptics instance with automatic lifecycle handling.
 ## Usage
 
 ```typescript
-import { useWebHaptics } from '@builderbot/web-haptics/react'
+import { useWebHaptics } from 'web-haptics/react'
 
 function MyComponent() {
   const { trigger, cancel, isSupported } = useWebHaptics(options?)
@@ -56,7 +56,7 @@ Returns an object with the following properties:
 ### Basic Usage
 
 ```tsx
-import { useWebHaptics } from '@builderbot/web-haptics/react'
+import { useWebHaptics } from 'web-haptics/react'
 
 function MyButton() {
   const { trigger, isSupported } = useWebHaptics()
@@ -147,7 +147,7 @@ Vue also uses `useWebHaptics` with similar API:
 
 ```vue
 <script setup>
-import { useWebHaptics } from '@builderbot/web-haptics/vue'
+import { useWebHaptics } from 'web-haptics/vue'
 
 const { trigger, isSupported } = useWebHaptics()
 
